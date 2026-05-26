@@ -1,0 +1,18 @@
+# =============================================================================
+# AutoML Studio — docker-compose.yml
+# Usage: docker compose up --build
+#        Open: http://localhost:8501
+# =============================================================================
+
+version: "3.9"
+
+services:
+  automl-studio:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./output:/root/automl_studio_output   # persist models and plots
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
