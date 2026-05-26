@@ -41,7 +41,7 @@ A full-stack AutoML web application that lets anyone train and compare ML models
 - Temp artifact persistence gives full training provenance — the exact dataset the model trained on is always recoverable
 - File-based plot capture handles PyCaret's cross-version inconsistency in `plot_model()` return types
 
-> 📁 [`Python/automl-studio/`](./Python/automl-studio/) · `streamlit run app.py`
+> 📁 [`Python/automl-studio/`](.Python/automl_studio) · `streamlit run app.py`
 
 ---
 
