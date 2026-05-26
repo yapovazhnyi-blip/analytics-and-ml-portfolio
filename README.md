@@ -1,107 +1,130 @@
-# 👋 Hi, I'm Yaro Povazhnyi
+# 👋 Hi, I'm Yaroslav (Yaro) Povazhnyi
 
-### Data Science & Machine Learning Engineer
-**SQL • BigQuery • Python • Tableau • Scikit-learn • XGBoost**
+### Data Analyst & ML Engineer  
+**SQL · BigQuery · Python · Tableau · Machine Learning**
 
-I build end-to-end data workflows — from raw data ingestion and cleaning through 
-to machine learning models and interactive dashboards. My work bridges traditional 
-analytics and modern ML engineering.
+I build end-to-end data workflows — from raw data ingestion and cleaning through SQL modelling, visualisation, and ML-powered automation. My work focuses on turning messy datasets into clear, business-ready insights and deployable models.
+
+---
+
+## 🛠️ Skills & Tools
+
+| Area | Technologies |
+|---|---|
+| **Languages** | Python · SQL |
+| **Databases** | BigQuery · PostgreSQL · MySQL · MongoDB · SQLite |
+| **ML / AutoML** | PyCaret · scikit-learn · XGBoost · LightGBM |
+| **Visualisation** | Tableau · Google Sheets |
+| **Python Libraries** | Streamlit · pandas · NumPy · Matplotlib |
+| **Workflow** | Git · Docker |
 
 ---
 
 ## 🚀 Featured Projects
 
-### 🚕 NYC Taxi Trip Duration Prediction *(Machine Learning — Python + BigQuery)*
-End-to-end ML pipeline using Google BigQuery public datasets.
-- Connected to BigQuery, pulled 500,000 real NYC taxi trips
-- Full data cleaning pipeline with IQR outlier removal
-- Trained and compared Linear Regression, Random Forest, and XGBoost
-- Metrics: MSE, RMSE, MAE, R², MAPE
-- Visualisations: distribution plots, correlation heatmap, residual analysis, feature importance
+---
 
-➡️ [Python/BigQuery/nyc_taxi_ml](https://github.com/yapovazhnyi-blip/yaro-povazhnyi2155/tree/main/Python)
+### ⚗️ AutoML Studio — Zero-Code Machine Learning App
+**Python · Streamlit · PyCaret · SQL · BigQuery · MongoDB**
+
+A full-stack AutoML web application that lets anyone train and compare ML models without writing code.
+
+**What it does:**
+- Connects to 7 data sources: CSV, Excel, PostgreSQL, MySQL, MariaDB, BigQuery, MongoDB, SQLite
+- Cleans missing data column-by-column with configurable fill strategies
+- Persists cleaned data as a durable artifact (CSV file or database temp table)
+- Benchmarks 15–25 ML algorithms with k-fold cross-validation using PyCaret
+- Produces a ranked leaderboard, model visualisations (Confusion Matrix, ROC/AUC, Feature Importance), and a downloadable production `.pkl` model
+
+**Key technical decisions:**
+- Lazy PyCaret imports keep startup fast despite 50+ transitive dependencies
+- Temp artifact persistence gives full training provenance — the exact dataset the model trained on is always recoverable
+- File-based plot capture handles PyCaret's cross-version inconsistency in `plot_model()` return types
+
+> 📁 [`Python/automl-studio/`](./Python/automl-studio/) · `streamlit run app.py`
 
 ---
 
-### 🎵 Spotify Hit Prediction *(Machine Learning — Python + Streamlit)*
-Classification model that predicts whether a song will become a hit.
-- XGBoost classifier with GridSearchCV hyperparameter tuning
-- Feature engineering: one-hot genre encoding, explicit flag, audio features
-- Interactive Streamlit UI — adjust sliders and get live predictions
-- Metrics: F1 Score, Classification Report, Precision, Recall
+### 📊 End-to-End Sales Analytics — BigQuery SQL
+**BigQuery SQL · Google Sheets**
 
-➡️ [Python/Spotify/spotify-hit-prediction](https://github.com/yapovazhnyi-blip/yaro-povazhnyi2155/tree/main/Python)
+A structured SQL analytics workflow covering the full pipeline from raw schema to KPI reporting.
 
----
+**What it does:**
+- Renames and standardises raw field names for consistency
+- Runs data quality checks before any aggregation
+- Calculates revenue metrics and merges Orders and Products datasets
+- Builds temporary analytical tables for downstream BI consumption
 
-### 📊 End-to-End Sales Analytics *(BigQuery SQL)*
-Schema cleanup, dataset merging, KPI calculations, and temporary analytical tables.
+**Skills demonstrated:** CTEs · JOINs · aggregations · schema design · data quality validation
 
-➡️ [SQL/end-to-end-sales-analytics-bigquery](https://github.com/yapovazhnyi-blip/yaro-povazhnyi2155/blob/main/SQL/end-to-end-sales-analytics-bigquery/docs/README.md)
-
----
-
-### 🚁 Drone Usage Analytics *(Tableau Story)*
-Interactive data storytelling dashboard on drone usage in the Russia-Ukraine war.
-
-➡️ [View on Tableau Public](https://public.tableau.com/app/profile/yaro.povazhnyi2155/viz/DroneusageinwarbetweenRussiaandUkraine/Story1)
+> 📁 [`SQL/end-to-end-sales-analytics-bigquery/`](./SQL/end-to-end-sales-analytics-bigquery/docs/README.md)
 
 ---
 
-### 📈 Tableau Visualization Case Study
-Structured visual insights dashboard demonstrating KPI storytelling.
+### 🚁 Drone Usage Analytics — Tableau Story
+**Tableau Public**
 
-➡️ [View on Tableau Public](https://public.tableau.com/app/profile/yaro.povazhnyi2155/viz/TestProject_17678821298320/Story1)
+An interactive data storytelling dashboard covering drone usage patterns in the Russia–Ukraine war, built for a non-technical audience.
 
----
+**What it does:**
+- Structures complex event data into a narrative-driven Tableau Story
+- Uses layered filters and calculated fields to enable audience-led exploration
+- Designed for clarity first — every visual serves a specific analytical question
 
-### 📂 CSV Data Exploration Workflow *(Google Sheets)*
-Google Sheets + CSV analytics pipeline with structured data exploration.
-
-➡️ [SpreadSheets/csv-data-exploration](https://github.com/yapovazhnyi-blip/yaro-povazhnyi2155/blob/main/SpreadSheets/GoogleTables/csv-data-exploration/docs/README.md)
-
----
-
-## 🧰 Tech Stack
-
-| Area | Tools |
-|---|---|
-| **Languages** | Python, SQL |
-| **ML / Data Science** | Scikit-learn, XGBoost, Pandas, NumPy |
-| **Cloud & Data** | Google BigQuery, Google Sheets |
-| **Visualisation** | Tableau, Matplotlib, Seaborn, Plotly |
-| **ML Deployment** | Streamlit |
-| **Version Control** | Git, GitHub |
+> 🔗 [View on Tableau Public](https://public.tableau.com/app/profile/yaro.povazhnyi2155/viz/DroneusageinwarbetweenRussiaandUkraine/Story1)
 
 ---
 
-## 📁 Repository Structure
+### 📈 Tableau Visualisation Case Study
+**Tableau Public**
+
+An interactive dashboard demonstrating structured visual insight design — layout hierarchy, colour encoding, and KPI storytelling.
+
+> 🔗 [View on Tableau Public](https://public.tableau.com/app/profile/yaro.povazhnyi2155/viz/TestProject_17678821298320/Story1)
+
+---
+
+### 📂 CSV Data Exploration — Google Sheets Pipeline
+**Google Sheets · CSV**
+
+A data cleaning and structuring workflow built entirely in Google Sheets, covering filtering, aggregation, category-level revenue analysis, and automated data preparation.
+
+> 📁 [`SpreadSheets/GoogleTables/csv-data-exploration/`](./SpreadSheets/GoogleTables/csv-data-exploration/docs/README.md)
+
+---
+
+## 🗂️ Repository Structure
+
+```
 yaro-povazhnyi2155/
+│
 ├── Python/
-│   ├── BigQuery/             ← NYC Taxi ML pipeline
-│   └── Spotify/              ← Hit Prediction + Streamlit app
+│   └── automl-studio/          # AutoML Studio — Streamlit + PyCaret app
+│
 ├── SQL/
-│   └── end-to-end-sales-analytics-bigquery/
+│   └── end-to-end-sales-analytics-bigquery/   # BigQuery SQL pipeline
+│
 ├── SpreadSheets/
 │   └── GoogleTables/
-└── Visualization/            ← Tableau exports and assets
+│       └── csv-data-exploration/              # Google Sheets analytics
+│
+└── Visualization/              # Tableau dashboards and visual case studies
+```
 
 ---
 
-## 💡 Skills Demonstrated
+## 📊 Analytics Focus
 
-- End-to-end ML pipelines (data → model → deployment)
-- Cloud data querying with BigQuery
-- Model evaluation: MSE, RMSE, MAE, R², F1, Precision, Recall
-- Hyperparameter tuning with GridSearchCV and RandomizedSearchCV
-- Interactive app deployment with Streamlit
-- SQL joins, KPI modeling, schema design
-- Data storytelling with Tableau
+- End-to-end data workflows (ingest → clean → model → visualise)
+- SQL joins, window functions, and KPI modelling
+- AutoML and model selection pipelines
+- Dashboard UX and data storytelling
+- Reproducible analytics with documented provenance
 
 ---
 
 ## 📫 Connect
 
-- 💼 [LinkedIn](https://www.linkedin.com/in/yaroslav-povazhnyi-617285289/)
-- 📊 [Tableau Public](https://public.tableau.com/app/profile/yaro.povazhnyi2155)
-- 🐙 [GitHub](https://github.com/yapovazhnyi-blip)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Yaroslav_Povazhnyi-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/yaroslav-povazhnyi-617285289/)
+[![Tableau](https://img.shields.io/badge/Tableau_Public-Portfolio-E97627?logo=tableau&logoColor=white)](https://public.tableau.com/app/profile/yaro.povazhnyi2155)
