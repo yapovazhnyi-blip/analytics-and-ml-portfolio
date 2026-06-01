@@ -1,9 +1,0 @@
-[global]
-# Force UTF-8 encoding on Windows (prevents cp1251 / charmap errors)
-
-[server]
-fileWatcherType = "none"
-headless = false
-
-[browser]
-gatherUsageStats = false
