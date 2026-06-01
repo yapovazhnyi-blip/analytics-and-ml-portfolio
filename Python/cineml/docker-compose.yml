@@ -1,0 +1,45 @@
+services:
+  recommender-api:
+    build:
+      context: ./module2_recommender
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - MODEL_PATH=/app/data/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  ab-api:
+    build:
+      context: ./module3_ab_engine
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./data:/app/data
+
+  ab-dashboard:
+    build:
+      context: ./module3_ab_engine
+      dockerfile: Dockerfile.streamlit
+    ports:
+      - "8503:8503"
+    volumes:
+      - ./data:/app/data
+    command: streamlit run /app/module3_ab_engine/dashboard.py --server.port 8503 --server.address 0.0.0.0
+
+  diffusion-demo:
+    build:
+      context: ./module5_diffusion_vit
+      dockerfile: Dockerfile
+    ports:
+      - "7860:7860"
+    volumes:
+      - ./data:/app/data
+    command: python /app/module5_diffusion_vit/demo/app.py

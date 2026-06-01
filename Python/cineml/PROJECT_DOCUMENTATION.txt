@@ -1,0 +1,1215 @@
+================================================================================
+  CineML Platform — Complete Technical Documentation
+  End-to-End ML Research & Experimentation for Streaming Content Intelligence
+================================================================================
+
+Last updated : 2024
+Repo root    : cineml/
+Entry point  : streamlit run interface/app.py
+
+This document covers every file in the project: what it does, how it works,
+the underlying principles, and how pieces connect to each other.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 1 — PROJECT ARCHITECTURE & DESIGN PHILOSOPHY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The Central Idea
+────────────────
+CineML is built around a single data universe shared by all five modules:
+
+    MovieLens 25M  (ratings)
+    TMDB API       (metadata + poster images)
+    Synthetic logs (streaming events: impressions, clicks, completions)
+
+This matters because each module feeds the next:
+  • M1 produces the data every other module reads
+  • M2 trains the recommender that M3 A/B-tests
+  • M3 generates the results that M4 analyses
+  • M5 generates artwork for the same movies M1-M4 work with
+
+Without this shared data universe, each module would be a disconnected toy
+project. With it, the whole repo tells a coherent product story.
+
+Why these five modules?
+────────────────────────
+The project covers three distinct ML engineering roles:
+
+  Role A — ML Researcher: Diffusion models, Transformer architectures,
+           neural embeddings, evaluation frameworks, experiment tracking
+
+  Role B — Senior DS (Personalisation): Recommendation algorithms,
+           causal inference, content discovery analysis, metric design
+
+  Role C — Full-stack DS (Experimentation): Production APIs, Bayesian
+           testing, sequential testing, data pipelines, stakeholder comms
+
+Mapping:
+  M1 → A (data strategy), B (pipelines), C (engineering)
+  M2 → A (neural arch), B (personalisation algorithms)
+  M3 → B (causal inference), C (experimentation platform)
+  M4 → B (discovery analysis), C (data storytelling)
+  M5 → A (diffusion, transformers, evaluation)
+
+Data flow diagram
+─────────────────
+  MovieLens 25M  ──┐
+  TMDB API       ──┼──▶  M1 Data Pipeline  ──▶  Parquet / BigQuery
+  Event Simulator──┘          │
+                              ▼
+                       M2 Personalisation Engine
+                       (ALS baseline + Two-Tower neural model)
+                              │  ranked recs (treatment arm)
+                              ▼
+                       M3 A/B & Causal Engine
+                       (Frequentist / Bayesian / DiD / PSM)
+                              │  experiment results + event logs
+                              ▼
+                       M4 Analysis Memo
+                       (OLS + cohort breakdown + findings)
+
+                       M5 Diffusion + ViT  ◀── TMDB poster images
+                       (DDPM from scratch + ViT-B/16)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 2 — MODULE 1: DATA CURATION PIPELINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose
+───────
+Build the single data foundation that every other module depends on. The
+pipeline produces three artefacts: a ratings table, a movies metadata table,
+and a synthetic streaming event log. All outputs are versioned Parquet files
+with optional BigQuery upload.
+
+Principle: Separation of raw vs processed data
+────────────────────────────────────────────────
+Raw data (downloaded from the internet) lives in data/raw/ and is never
+modified. Processed data lives in data/processed/ and is always reproducible
+from the raw files. This follows the medallion architecture pattern common
+in production data platforms.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module1_data_pipeline/config.py
+────────────────────────────────────────────────────────────────────────────
+What it does:
+  Single source of truth for all configuration. Any script that needs a
+  path, API key, or constant imports it from here rather than hardcoding.
+
+How it works:
+  Uses pathlib.Path relative to the file's own location (__file__) so it
+  works regardless of where you call the script from. Loads a .env file
+  via python-dotenv so secrets (API keys, GCP project ID) are never
+  committed to version control.
+
+Key constants:
+  RAW_DIR       — data/raw/    (never modified after download)
+  PROCESSED_DIR — data/processed/ (output of all pipeline scripts)
+  ARTIFACTS_DIR — data/artifacts/ (MD5 checksums for versioning)
+  TMDB_API_KEY  — read from .env file
+  BQ_TABLES     — dict of BigQuery fully-qualified table names
+  N_USERS, N_EVENTS_PER_USER — controls event log size
+
+Principle (why a config module?):
+  Having a single config avoids the "magic string" anti-pattern where the
+  same path appears in ten different files. When you change the data dir,
+  you change it in one place.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module1_data_pipeline/fetch_movielens.py
+────────────────────────────────────────────────────────────────────────────
+What it does:
+  Downloads the MovieLens 25M dataset (25 million ratings from 162,000
+  users on 62,000 movies), cleans it, and saves two Parquet files:
+  ratings.parquet and movies.parquet.
+
+How it works:
+  1. Stream-downloads the zip file in 1MB chunks using requests, showing
+     a tqdm progress bar. Skips download if zip already exists (idempotent).
+  2. Extracts with zipfile.ZipFile.
+  3. Reads CSV with typed dtypes (int32, float32) to minimise RAM usage.
+  4. Applies data quality gates: rating range [0.5, 5.0], no nulls,
+     no duplicate (userId, movieId) pairs.
+  5. Parses movie titles to extract the year (e.g., "Toy Story (1995)")
+     and splits the pipe-delimited genre string into a Python list.
+  6. Saves as Snappy-compressed Parquet and writes an MD5 checksum to
+     data/artifacts/ for lightweight versioning.
+
+Key decisions:
+  - Parquet over CSV: ~10x smaller, typed columns, fast predicate pushdown
+  - Snappy compression: fast decompression for analytic queries vs GZIP
+  - MD5 versioning: a simple alternative to DVC for small teams
+
+Principle (idempotency):
+  The script checks if the zip already exists before downloading. Any
+  pipeline step should be safe to re-run without side effects.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module1_data_pipeline/fetch_tmdb.py
+────────────────────────────────────────────────────────────────────────────
+What it does:
+  Matches MovieLens movies to TMDB using title/year search, then fetches
+  rich metadata (overview, genres, runtime, budget, revenue, popularity)
+  and downloads poster images as JPGs.
+
+How it works:
+  1. For each MovieLens movie, calls the TMDB /search/movie endpoint using
+     the cleaned title and extracted year.
+  2. Takes the top search result and calls /movie/{id} with
+     append_to_response=credits,keywords for one API call per movie.
+  3. Downloads poster images to data/raw/tmdb/posters/{movieId}.jpg.
+  4. Saves a running cache to tmdb_metadata.parquet so the script can
+     resume if interrupted (crucial when fetching thousands of movies).
+  5. Respects the TMDB free-tier rate limit: sleeps 40ms between requests
+     (~25 requests/second).
+
+Error handling:
+  - HTTP 429 (rate limit): reads Retry-After header, sleeps
+  - Network errors: retries 3 times with 1s backoff
+  - Missing posters: records None in poster_path column, continues
+
+Principle (resume-from-cache):
+  Network-heavy data collection scripts must be interruptible and
+  resumable. The script reads the existing Parquet cache at startup and
+  skips already-fetched movie IDs. Without this, a crash at movie 4,800
+  means restarting from zero.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module1_data_pipeline/event_simulator.py
+────────────────────────────────────────────────────────────────────────────
+What it does:
+  Generates a synthetic streaming event log that mimics real user behaviour
+  on a streaming platform: impressions, clicks, completions, skips, and
+  watchlist additions. Each user is randomly assigned to a control or
+  treatment arm for the A/B test.
+
+Why synthetic events?
+  Real streaming logs cannot be published publicly (user privacy). The
+  synthetic log gives us an outcome dataset for M3's causal analysis with
+  known ground truth (we control the true effect size).
+
+How it works:
+  User profiles:
+    Each user gets an activity level (power/casual/lurker) drawn from a
+    multinomial distribution, and a genre affinity vector drawn from a
+    Dirichlet distribution. Dirichlet ensures affinities sum to 1 and
+    are non-negative — they're interpretable as probabilities.
+
+  Movie profiles:
+    Each movie gets a popularity score drawn from a log-normal distribution.
+    Log-normal is realistic: a few blockbusters dominate, most titles are
+    niche. The long tail is a core feature of streaming catalogues.
+
+  Click-through rate model:
+    CTR = base_rate * popularity * activity_multiplier * position_decay * arm_lift
+
+    - base_rate: CLICK_THROUGH_RATE from config (default 0.15)
+    - popularity: log-normal score normalised to [0,1]
+    - activity_multiplier: 1.5 for power users, 0.4 for lurkers
+    - position_decay: 1/(1 + 0.1*position) — items lower in the feed
+      get fewer clicks, reflecting real user scrolling behaviour
+    - arm_lift: 1.2 for treatment users (Two-Tower model is better)
+
+  Event sequence:
+    For each user-movie impression, the simulator independently samples:
+      - Was it clicked? (Bernoulli with CTR)
+      - If clicked, was it completed? (Bernoulli with COMPLETION_RATE)
+      - If not completed, was it skipped? (Bernoulli 0.7)
+      - Was it watchlisted? (Bernoulli 0.1)
+
+  Arm assignment:
+    Users with even IDs → treatment, odd IDs → control. Simple modulo
+    gives a 50/50 split without randomisation overhead.
+
+Output schema:
+  event_id, user_id, movie_id, event_type, timestamp, session_id,
+  position_in_feed, dwell_ms, arm
+
+Principle (simulation fidelity):
+  The simulator encodes domain knowledge: position decay, activity tiers,
+  log-normal popularity. A purely random simulator would produce event
+  logs with no structure for the causal methods to work with.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module1_data_pipeline/bigquery_loader.py
+────────────────────────────────────────────────────────────────────────────
+What it does:
+  Uploads the three processed Parquet files to Google BigQuery with
+  appropriate schemas, partitioning, and clustering for cost-efficient
+  analytical queries.
+
+How it works:
+  1. Creates the BigQuery dataset if it doesn't exist.
+  2. For each table, reads the Parquet file and calls
+     client.load_table_from_dataframe() with a LoadJobConfig.
+  3. Uses WRITE_TRUNCATE: replaces the table on every upload (idempotent).
+
+Schema decisions:
+  ratings   — no partitioning (small, analytical)
+  movies    — no partitioning (lookup table)
+  events    — DAY partitioned on timestamp, clustered on [arm, event_type]
+
+Why partition events by day?
+  A typical A/B analysis query filters by date range. BigQuery charges per
+  byte scanned — a DAY partition means a 30-day query only scans 30 of
+  365 partitions, reducing cost by ~12x. Clustering on arm and event_type
+  further prunes data for queries like WHERE arm='treatment' AND
+  event_type='click'.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 3 — MODULE 2: PERSONALISATION ENGINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose
+───────
+Build the recommender system that generates the treatment-arm rankings
+tested by M3. Three models in increasing sophistication: ALS baseline,
+Two-Tower neural model, offline evaluation framework, and a FastAPI service.
+
+Core concept: Collaborative Filtering (CF)
+───────────────────────────────────────────
+CF is the idea that users who agreed on past items will agree on future
+items. We don't need to know anything about a movie's content — we only
+need the pattern of who watched what. Two users who both loved the same
+five obscure films will probably agree on a sixth.
+
+Limitation: CF cannot handle new users (no history) or new items
+(no interactions). This is the cold-start problem. M2's hybrid ranker
+addresses this with content features as a fallback.
+
+Core concept: Implicit Feedback
+────────────────────────────────
+MovieLens has explicit ratings (1-5 stars). But on a streaming platform,
+most signals are implicit: clicks, completions, skips. A user who watches
+a film to completion is expressing positive preference even without rating
+it. ALS and the Two-Tower model both treat the data as implicit feedback.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module2_recommender/models/als_model.py
+────────────────────────────────────────────────────────────────────────────
+What it does:
+  Matrix factorisation using Alternating Least Squares (ALS) on implicit
+  feedback data. Produces user and item latent factor matrices.
+
+Principle — Matrix Factorisation:
+  Given a user-item interaction matrix R (sparse, n_users x n_items),
+  approximate it as R ≈ U * V^T where U is (n_users, k) and V is
+  (n_items, k). The k latent dimensions capture hidden taste dimensions.
+
+  ALS solves this by fixing V and solving for U in closed form (least
+  squares), then fixing U and solving for V, alternating until convergence.
+  Each solve is a parallelisable linear algebra problem — much faster than
+  gradient descent on the full matrix.
+
+Implicit confidence weighting (Hu, Koren, Volinsky 2008):
+  We don't directly minimise error on the rating values. Instead, we
+  define confidence c_ui = 1 + alpha * r_ui. A rating of 5 gets
+  confidence 1 + 40*5 = 201; a rating of 0.5 gets confidence 21.
+  ALS then minimises a weighted least squares objective, giving more
+  weight to high-confidence interactions. Alpha=40 is the standard
+  value from the original paper.
+
+How it works:
+  Uses the `implicit` library which implements GPU-accelerated ALS with
+  a Conjugate Gradient solver (faster than direct solve for large k).
+  The wrapper class handles ID encoding (MovieLens IDs → contiguous ints)
+  and decoding (contiguous ints → original MovieLens IDs) transparently.
+
+Key methods:
+  fit(ratings_df)         — builds the sparse matrix, runs ALS
+  recommend(user_id, n)   — top-N items for a user
+  similar_items(movie_id) — nearest neighbours in item embedding space
+  evaluate(test_matrix)   — NDCG@k and MAP@k on held-out data
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module2_recommender/models/two_tower.py
+────────────────────────────────────────────────────────────────────────────
+What it does:
+  Neural retrieval model with separate user and item towers. The
+  centrepiece of the M2 module and the bridge to M5's Transformer work.
+
+Architecture overview:
+  User Tower:
+    user_id → Embedding(64) → Linear(128) → LayerNorm → ReLU → Dropout
+    → Linear(128) → LayerNorm → output: 128-dim user vector
+
+  Item Tower:
+    movie_id  → Embedding(64)  ──┐
+    genre_ids → EmbeddingBag(16)─┘ → concat(80) → Linear(128) → LayerNorm
+    → ReLU → Dropout → Linear(128) → LayerNorm → output: 128-dim item vector
+
+  Score: cosine_similarity(user_vec, item_vec) / temperature
+
+Principle — why two towers?
+  The two-tower architecture (Covington et al., YouTube 2016) separates
+  user and item encoding. This means:
+  1. You can pre-compute all item embeddings offline once and cache them.
+  2. At inference, only the user tower runs, then a fast dot-product search
+     (ANN) finds the top-K items. This scales to billions of items.
+  3. The training signal (which items users clicked) flows through both
+     towers' gradients, teaching each tower what the other needs.
+
+Principle — BPR loss:
+  Bayesian Personalised Ranking (Rendle et al. 2009) is the right loss for
+  implicit feedback. For each observed (user, positive_item) pair, we
+  sample a random negative item and optimise:
+
+    L = -log σ(score(user, pos) - score(user, neg))
+
+  This directly optimises the ranking objective: positive items should
+  rank above negatives. It does not require knowing the "true" relevance
+  of unobserved items (unlike pointwise MSE which treats all unobserved
+  items as irrelevant).
+
+Principle — LayerNorm vs BatchNorm:
+  We use LayerNorm, not BatchNorm. BatchNorm depends on batch statistics,
+  which makes it unstable with small or variable batch sizes during
+  inference. LayerNorm normalises across the feature dimension of a single
+  sample — safe for both training and single-sample inference.
+
+Principle — L2 normalisation for cosine similarity:
+  Before computing the dot product, both vectors are L2-normalised. This
+  turns the dot product into cosine similarity (range [-1, 1]), removing
+  the effect of vector magnitude and focusing on direction. Temperature
+  scaling (dividing by 0.07) sharpens the distribution — small differences
+  in similarity become large differences in score, which helps the model
+  discriminate between near-identical candidates.
+
+Key PyTorch concepts used:
+  nn.Embedding     — learnable lookup table; maps integer IDs to vectors
+  nn.EmbeddingBag  — like Embedding but averages multiple embeddings;
+                     used for the multi-hot genre representation
+  F.normalize      — in-place L2 normalisation
+  @torch.inference_mode() — disables gradient tracking; faster, less RAM
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module2_recommender/evaluation.py
+────────────────────────────────────────────────────────────────────────────
+What it does:
+  Implements the full suite of offline recommender evaluation metrics:
+  NDCG@k, MAP@k, Hit@k, Novelty, and Catalogue Coverage.
+
+Why offline evaluation matters:
+  Online A/B testing is expensive (real users, real traffic). Offline
+  evaluation on held-out data lets you reject bad models before shipping,
+  though it's an imperfect proxy for online performance.
+
+Metric explanations:
+
+  NDCG@k (Normalised Discounted Cumulative Gain):
+    Measures ranking quality. A relevant item in position 1 scores more
+    than the same item in position 10. Normalised by the ideal ranking
+    (all relevant items at top). Range [0, 1]; higher is better.
+
+    DCG@k = sum_i (rel_i / log2(i+1))   for i in 1..k
+    NDCG@k = DCG@k / IDCG@k
+
+  MAP@k (Mean Average Precision):
+    Average of precision values computed at each position where a relevant
+    item appears. Rewards models that find relevant items early.
+
+  Hit@k:
+    Binary: did any of the top-k recommendations match a relevant item?
+    Equivalent to recall@1 relaxed to @k. Easy to explain to stakeholders.
+
+  Novelty (self-information):
+    Mean of -log2(p(item)) where p(item) is item popularity. Popular items
+    have low self-information (everyone recommends them). High novelty means
+    the model recommends surprising items — proxy for serendipity.
+
+  Catalogue Coverage:
+    Fraction of all items that appear in at least one user's top-k list.
+    Low coverage indicates a filter bubble — the model recommends the same
+    few popular items to everyone.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module2_recommender/train.py
+────────────────────────────────────────────────────────────────────────────
+What it does:
+  Entry-point script for training both ALS and Two-Tower models.
+  Handles data loading, dataset construction, training loop, and saving.
+
+ImplicitDataset:
+  Custom PyTorch Dataset that generates BPR triplets:
+  (user_id, positive_item_id, negative_item_id)
+  Negative items are sampled uniformly at random from the catalogue.
+  Random negatives are not ideal (sampled negatives could be positives),
+  but in practice, with a large catalogue, the probability of accidentally
+  sampling a true positive is low (<0.1%).
+
+Training loop details:
+  - AdamW optimiser: Adam with weight decay (L2 regularisation on weights,
+    not gradient moments). Better generalisation than plain Adam.
+  - Gradient clipping (max_norm=1.0): prevents exploding gradients in the
+    early training phases when embeddings are randomly initialised.
+  - Cosine annealing LR schedule: smoothly decays learning rate from lr
+    to 0 over T_max epochs. Helps the model settle into a sharp minimum.
+  - pin_memory=True in DataLoader: keeps the dataset in pinned (page-locked)
+    CPU memory, making GPU transfers faster.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module2_recommender/api/main.py
+────────────────────────────────────────────────────────────────────────────
+What it does:
+  FastAPI REST service exposing recommendation endpoints. Designed for
+  production deployment behind a load balancer.
+
+How it works:
+  Models are loaded once at application startup via @app.on_event("startup"),
+  not per-request. This is critical: loading a PyTorch model takes seconds;
+  doing it on every request would make the API unusably slow.
+
+  Pydantic schemas enforce the request/response contract. FastAPI
+  automatically generates OpenAPI documentation at /docs.
+
+Endpoints:
+  GET  /health                           — liveness probe for Docker/k8s
+  GET  /recommend/{user_id}?n=10         — top-N recs for a user
+  GET  /similar/{movie_id}?n=10          — similar items via ALS
+  POST /batch-recommend                  — recs for multiple users
+
+Error handling:
+  - Unknown user (cold start) → 404 with meaningful message
+  - Model not loaded → 503 Service Unavailable
+  - Query parameter validation → 422 Unprocessable Entity (Pydantic)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 4 — MODULE 3: A/B & CAUSAL INFERENCE ENGINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose
+───────
+Rigorously measure whether the Two-Tower recommender (treatment) improves
+user outcomes over the popularity-based baseline (control). Uses four layers
+of statistical analysis, each answering a different question.
+
+The fundamental problem: causation vs correlation
+──────────────────────────────────────────────────
+Correlation: treatment users have higher CTR.
+Causation: the Two-Tower model *caused* the CTR increase.
+
+The two are different because treatment users might be more engaged to begin
+with (selection bias). A rigorous experiment design — and causal methods when
+design isn't perfect — separates the causal effect from confounders.
+
+The four statistical layers:
+
+  Layer 1: Frequentist  — Is the effect real or chance?
+  Layer 2: Bayesian     — How confident are we, and what is the full
+                          probability distribution of the effect?
+  Layer 3: Sequential   — Can we monitor the test safely without inflating
+                          false positives from repeated peeking?
+  Layer 4: Causal       — What if the two groups differed before the test?
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module3_ab_engine/frequentist.py
+────────────────────────────────────────────────────────────────────────────
+
+Principle — Two-proportion z-test:
+  Tests H0: p_control = p_treatment against H1: p_treatment > p_control.
+  The test statistic is z = (p_t - p_c) / SE where SE uses the pooled
+  proportion under H0. Under H0, z ~ N(0,1) asymptotically.
+
+  Critical assumption: independence of observations. If one user generates
+  multiple clicks, we aggregate to user-level CTR first (as we do here)
+  to avoid pseudo-replication.
+
+Principle — Welch's t-test (continuous metrics):
+  For metrics like dwell time that are not binary, we use Welch's t-test
+  which does NOT assume equal variances. The regular Student's t-test
+  assumes equal variance — almost never true in practice.
+
+Principle — SPRT (Sequential Probability Ratio Test):
+  Classical frequentist tests assume a fixed sample size decided in advance.
+  If you peek at results mid-experiment (as everyone does), you inflate the
+  false positive rate: the probability of seeing p < 0.05 at least once in
+  a sequence of tests is much higher than 5%.
+
+  SPRT (Wald 1945) solves this by maintaining a log-likelihood ratio (LLR)
+  that updates with each new observation. The test has two boundaries:
+    - Upper boundary B: reject H0 (stop, treatment wins)
+    - Lower boundary A: accept H0 (stop, no effect)
+  Between them: continue collecting data.
+
+  This gives valid type-I and type-II error guarantees at any stopping time,
+  not just at a pre-specified sample size. Used by Netflix and Airbnb for
+  their real-time experimentation platforms.
+
+Principle — Sample size calculator:
+  Required n is derived from:
+    z_alpha = Phi^{-1}(1 - alpha/2)  (z-score for desired alpha)
+    z_beta  = Phi^{-1}(power)         (z-score for desired power)
+    n = (z_alpha * sqrt(2*p_pool*(1-p_pool)) + z_beta * sqrt(p1*(1-p1) + p2*(1-p2)))^2
+        / MDE^2
+
+  This is the standard formula for two-proportion tests from Kohavi et al.
+  (2020), "Trustworthy Online Controlled Experiments".
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module3_ab_engine/bayesian.py
+────────────────────────────────────────────────────────────────────────────
+
+Principle — Beta-Binomial conjugate model:
+  The Beta distribution is the conjugate prior for the Binomial likelihood.
+  This means: if you start with a Beta(alpha, beta) prior belief about a
+  conversion rate p, and observe k successes in n trials, the posterior
+  is exactly Beta(alpha + k, beta + n - k). No MCMC needed.
+
+  We use Beta(1, 1) as the prior — a uniform distribution over [0,1],
+  expressing no prior belief about the conversion rate.
+
+  After updating:
+    p_control   ~ Beta(1 + k_c, 1 + n_c - k_c)
+    p_treatment ~ Beta(1 + k_t, 1 + n_t - k_t)
+
+  We then draw 100,000 samples from each posterior and compute:
+    P(treatment > control) = fraction of samples where p_t > p_c
+    Expected lift           = mean(p_t - p_c)
+    95% credible interval   = [2.5th percentile, 97.5th percentile] of (p_t - p_c)
+
+Why Bayesian over frequentist?
+  - P(treatment > control) = 87% is directly interpretable.
+    p < 0.05 is NOT the probability that H0 is true — a common mistake.
+  - Credible intervals have intuitive meaning: "the true lift is in [a,b]
+    with 95% probability" (given the prior), unlike frequentist CIs.
+  - Easier to communicate to non-technical stakeholders.
+
+PyMC hierarchical model:
+  The optional PyMC model adds partial pooling: both arms share a common
+  hyperprior on the population conversion rate. This regularises estimates
+  for small samples and is extensible to multi-armed bandit scenarios with
+  many variants.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module3_ab_engine/causal.py
+────────────────────────────────────────────────────────────────────────────
+
+Principle — Difference-in-Differences (DiD):
+  DiD is a quasi-experimental design for observational data. The key insight:
+  even if treatment and control groups differ in their baseline levels, the
+  CHANGE over time should be the same in both groups absent treatment.
+
+  OLS model: Y = b0 + b1*treated + b2*post + b3*(treated*post) + error
+
+  b3 is the DiD estimator. It measures the excess change in the treatment
+  group relative to the control group's change — isolating the treatment
+  effect from pre-existing differences and common time trends.
+
+  DiD assumption (parallel trends): In the absence of treatment, both groups
+  would have followed the same time trend. We verify this by plotting the
+  pre-period trends and checking they're parallel.
+
+  HC3 standard errors: Heteroscedasticity-consistent (robust) SEs. Classical
+  OLS SEs assume constant error variance across observations. With real
+  user data, variance typically increases with engagement level. HC3 adjusts
+  for this without requiring you to model the variance structure.
+
+Principle — Propensity Score Matching (PSM):
+  PSM addresses selection bias: the fact that certain types of users may be
+  more likely to be assigned to treatment (even in a randomised experiment,
+  if randomisation was imperfect).
+
+  Step 1: Estimate e(X) = P(T=1 | X) using logistic regression. This is
+    the propensity score — the probability of being treated given observed
+    covariates X (e.g., activity level, n_impressions).
+
+  Step 2: Match each treated unit to the most similar control unit by
+    |logit(e_i) - logit(e_j)| within a caliper (threshold). The caliper
+    prevents poor matches that would inflate variance.
+
+  Step 3: Estimate ATT = mean(Y_treated - Y_matched_control).
+    ATT = Average Treatment Effect on the Treated. This is typically the
+    quantity of interest: the effect on the users who actually received
+    the new recommender.
+
+  Step 4: Bootstrap SE. The classical SE formula doesn't account for the
+    uncertainty in the matching step. Bootstrap draws matched samples with
+    replacement 500 times and computes the SE of the bootstrap ATT estimates.
+
+  Balance diagnostics: Standardised Mean Difference (SMD) before and after
+    matching. SMD < 0.1 on all covariates is the standard threshold for
+    adequate balance (Stuart 2010).
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module3_ab_engine/dashboard.py
+────────────────────────────────────────────────────────────────────────────
+What it does:
+  Standalone Streamlit app for the M3 analysis. Imported by the unified
+  interface but also runnable independently.
+
+Design pattern:
+  @st.cache_data(show_spinner=False) on the data load function — Streamlit
+  re-runs the entire script on every widget interaction, so uncached data
+  loads would re-read Parquet on every slider move.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 5 — MODULE 4: CONTENT DISCOVERY ANALYSIS MEMO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose
+───────
+The "thinking layer". A polished DS investigation memo that demonstrates
+senior data scientist reasoning: framing the right question, designing the
+right metrics, controlling for confounds, and knowing what to measure next.
+
+This is the module most likely to get you forwarded internally. Models are
+commodities; good problem framing is rare.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module4_analysis_memo/analysis_memo.py
+────────────────────────────────────────────────────────────────────────────
+
+Structure — Netflix DS memo format:
+  1. Problem framing     — why does this question matter for the business?
+  2. Metric definition   — what exactly do we mean by "discovery"?
+  3. Data overview       — sanity checks, arm balance
+  4. Primary analysis    — group means with statistical tests
+  5. Regression controls — OLS to isolate treatment effect
+  6. Cohort breakdown    — does the effect vary by user type?
+  7. Findings            — plain-language conclusions with uncertainty
+  8. What to measure next — forward-looking, shows strategic thinking
+
+Key insight — the discovery metric:
+  Standard A/B tests measure CTR. This memo argues for a better primary
+  metric: long-tail engagement rate — the fraction of clicks on movies
+  ranked >500 by popularity. This captures genuine discovery (user found
+  something non-obvious) rather than just engagement (user clicked something).
+
+  A user who clicks on a blockbuster that's been recommended 10 million
+  times is not "discovering" content. A user who clicks on a 2003 Estonian
+  drama is.
+
+Principle — OLS with HC3 robust SEs:
+  Simple group mean comparison doesn't control for confounders. OLS with
+  treatment as a binary predictor estimates the treatment effect while
+  controlling for user activity level (n_impressions). HC3 robust SEs
+  are used because user engagement variance is heteroscedastic — high-
+  engagement users have more variable CTR than lurkers.
+
+Principle — cohort analysis:
+  The average treatment effect may hide important heterogeneity. If the
+  Two-Tower model helps casual users but not power users, you want to
+  know — it affects roll-out prioritisation and future model development.
+
+The "what to measure next" section:
+  This is what separates senior DS candidates. It shows you understand
+  that measuring the experiment outcome is not the end of the analysis:
+  - Does the lift persist at 90 days? (Novelty decay risk)
+  - Does discovery lead to retention? (Leading vs lagging metrics)
+  - Are users' taste graphs broadening? (Gini coefficient on genres)
+  - What happens for new users? (Cold-start gap)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 6 — MODULE 5: GENERATIVE ARTWORK (DIFFUSION + VIT)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose
+───────
+Given a movie's genre, generate promotional poster artwork. Two components:
+(1) a ViT genre classifier with attention rollout explainability, and
+(2) a DDPM diffusion model implemented from scratch in PyTorch.
+
+The story: the recommender surfaces the right movies; the diffusion model
+generates artwork for them. This ties generative ML to the streaming domain.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module5_diffusion_vit/diffusion/ddpm.py
+────────────────────────────────────────────────────────────────────────────
+
+Principle — Diffusion models (Ho et al. 2020):
+  A diffusion model learns to reverse a noise-addition process.
+
+  Forward process (fixed, no parameters):
+    Given a clean image x0, we gradually add Gaussian noise over T steps:
+    q(xt | xt-1) = N(xt; sqrt(1-bt)*xt-1, bt*I)
+
+    The reparameterisation trick gives us a closed form:
+    q(xt | x0) = N(xt; sqrt(at_bar)*x0, (1-at_bar)*I)
+
+    where at_bar = product of (1 - b1)(1-b2)...(1-bt).
+    This means we can jump directly to any noise level xt from x0,
+    without iterating through all intermediate steps.
+
+  Reverse process (learned, parameterised by a neural network):
+    The model learns p_theta(xt-1 | xt) — how to remove one step of noise.
+    We parameterise this as predicting the noise eps_theta(xt, t) that was
+    added, then use Tweedie's formula to recover x0 and compute xt-1.
+
+  Training loss (simplified ELBO):
+    L_simple = E[||eps - eps_theta(sqrt(at_bar)*x0 + sqrt(1-at_bar)*eps, t)||^2]
+
+    We sample a random timestep t, add the corresponding amount of noise,
+    and train the U-Net to predict the noise that was added. This is just
+    MSE on noise, which is surprisingly effective.
+
+Noise schedule:
+  Linear schedule (Ho et al.): beta increases linearly from 1e-4 to 0.02.
+  Cosine schedule (Nichol & Dhariwal 2021): f(t) = cos^2((t/T + 0.008)/1.008 * pi/2)
+  The cosine schedule is better: the linear schedule destroys too much
+  signal at large T, while cosine keeps more structure in early steps.
+
+DiffusionScheduler class:
+  Pre-computes all T constants at initialisation:
+  - betas: noise added at each step
+  - alphas_cumprod: cumulative product, used for the reparameterisation
+  - sqrt_alphas_cumprod: for q_sample (forward process)
+  - posterior_variance, posterior_mean_coef1/2: for the reverse step
+
+Principle — DDIM sampler (Song et al. 2021):
+  DDPM requires T=1000 denoising steps. DDIM is 20x faster.
+
+  Key insight: the DDPM reverse process is Markovian (each step depends
+  only on the previous step). DDIM rewrites it as a non-Markovian process
+  where each xt-1 depends on both xt AND a direct prediction of x0.
+  This allows skipping most timesteps.
+
+  The deterministic version (eta=0) has no random noise in the reverse
+  step — the same starting noise always produces the same image. Setting
+  eta=1 recovers DDPM stochasticity.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module5_diffusion_vit/diffusion/unet.py
+────────────────────────────────────────────────────────────────────────────
+
+Principle — U-Net architecture:
+  The U-Net (Ronneberger et al. 2015) has an encoder-decoder structure
+  with skip connections. It was designed for image segmentation but is
+  the standard backbone for diffusion models because:
+  - The encoder captures global context (what the noise level is, what
+    genre we're conditioning on)
+  - The decoder upsamples back to the original resolution
+  - Skip connections pass fine-grained spatial information from encoder
+    to decoder, preventing detail loss
+
+Sinusoidal time embeddings:
+  The model needs to know which timestep t it's denoising. We encode t as
+  a sinusoidal vector (identical in spirit to Transformer position encoding):
+  emb[2i] = sin(t / 10000^(2i/d))
+  emb[2i+1] = cos(t / 10000^(2i/d))
+
+  Sinusoidal embeddings generalise to unseen timesteps (unlike learned
+  embeddings). The projection through two linear layers with SiLU gives
+  the model a rich, learnable representation of time.
+
+FiLM conditioning (Feature-wise Linear Modulation):
+  Genre labels condition the U-Net through FiLM. A linear layer maps the
+  time+genre embedding to a scale and shift per channel:
+  h = conv(h) * (scale + 1) + shift
+
+  Adding 1 to scale means the default behaviour (scale=0) is identity —
+  a sensible initialisation. This is also called AdaGN in the diffusion
+  literature (Adaptive Group Normalization).
+
+Cross-attention bottleneck:
+  At the bottleneck (deepest, most compressed representation), spatial
+  features attend to genre tokens via cross-attention:
+  - Query: spatial feature map flattened to (B, HW, C)
+  - Key/Value: genre embedding projected to (B, 1, C)
+
+  This is the same mechanism as in Stable Diffusion's text conditioning
+  and Sora's video conditioning. Understanding this bridge between
+  diffusion and Transformer is the key insight Role A interviews test.
+
+GroupNorm vs BatchNorm:
+  U-Net uses GroupNorm throughout. GroupNorm divides the channels into
+  groups and normalises within each group — independent of batch size.
+  This makes it stable for small batches (e.g., 4 images on a single GPU)
+  where BatchNorm statistics are unreliable.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module5_diffusion_vit/diffusion/train.py
+────────────────────────────────────────────────────────────────────────────
+
+Training strategy — MNIST first:
+  Always train on MNIST before TMDB. MNIST is 32x32 grayscale, trains on
+  CPU in ~20 minutes, and gives immediate feedback that your U-Net and
+  loss function are correct. If generated 7s look like 7s after 20 epochs,
+  your implementation is sound. Moving to TMDB's 64x64 colour images on
+  a GPU is then low-risk.
+
+MLflow experiment tracking:
+  Every run logs: hyperparameters (T, schedule, lr, batch_size, n_params),
+  loss curves, sample image grids every 10 epochs, and model checkpoints.
+  The MLflow UI (mlflow ui → localhost:5000) lets you compare runs visually.
+
+FID score (Fréchet Inception Distance):
+  Measures generated image quality. Computes the Fréchet distance between
+  the distribution of Inception v3 features of real images and generated
+  images. Lower is better; a well-trained model on TMDB posters should
+  reach FID < 50 (rough target, depends on dataset size).
+
+────────────────────────────────────────────────────────────────────────────
+FILE: module5_diffusion_vit/vit/finetune.py
+────────────────────────────────────────────────────────────────────────────
+
+Principle — Vision Transformer (Dosovitskiy et al. 2021):
+  ViT treats an image as a sequence of patches, just as BERT treats text
+  as a sequence of tokens. For a 224x224 image with 16x16 patches:
+  - 196 patches + 1 CLS token = 197 sequence length
+  - Each patch is flattened and projected to 768 dimensions
+  - Standard Transformer encoder (12 layers, 12 heads for ViT-B)
+  - CLS token output → linear classifier head
+
+  The key innovation: no convolutions, no inductive biases about spatial
+  locality. The model learns from scratch which patches attend to which.
+  With enough data (or good pre-training), it matches and often exceeds CNNs.
+
+Fine-tuning strategy (linear probe → full fine-tune):
+  Phase 1 (epochs 1-2): Freeze all ViT layers, only train the classifier
+    head. This prevents catastrophic forgetting — randomly initialised head
+    weights would corrupt the pre-trained features if the backbone also
+    updated at a high learning rate.
+
+  Phase 2 (epoch 3+): Unfreeze all layers, use a 10x lower LR for the
+    backbone than the head. The backbone needs gentle nudging; the head
+    needs to adapt more aggressively.
+
+  This strategy is standard for fine-tuning large pre-trained models on
+  small datasets.
+
+Principle — Attention Rollout (Abnar & Zuidema 2020):
+  Answers: which image patches did the ViT use to classify this poster?
+
+  Naive approach: just look at the attention weights of the CLS token in
+  the last layer. Problem: each layer only sees a local view; the CLS
+  token aggregates information across all layers via residual connections.
+
+  Attention Rollout properly accounts for this:
+  1. For each layer, compute A_l = (attn_l + I) / 2
+     Adding I accounts for the residual connection: information flows
+     through attention AND through the skip path.
+  2. Multiply across layers: R = A_L * A_{L-1} * ... * A_1
+     This propagates attention through the full depth of the network.
+  3. Extract CLS row of R: the weight of each of 196 patches to the CLS
+     token's final representation.
+  4. Reshape to 14x14, normalise to [0,1], overlay on original image.
+
+  This requires no gradient computation (unlike GradCAM) — fast and
+  architecture-agnostic.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 7 — UNIFIED INTERFACE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose
+───────
+A single Streamlit application that connects all five modules into a
+live, interactive portfolio demo. One URL, the whole system.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: interface/app.py
+────────────────────────────────────────────────────────────────────────────
+What it does:
+  Entry point. Renders the sidebar navigation and routes to the correct
+  page by reading and exec()-ing the page file.
+
+Design decision — exec() vs st.Page():
+  Using exec() rather than Streamlit's native multi-page approach gives
+  us full control over the session state namespace. All pages share the
+  same Python process, so @st.cache_resource objects (models) are loaded
+  once and shared across all pages.
+
+Sidebar health indicators:
+  Checks for the existence of artefact files (ratings.parquet, als_model.pkl,
+  etc.) on disk. This gives the user immediate visual feedback about which
+  pipeline steps have been completed.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: interface/components/data_loader.py
+────────────────────────────────────────────────────────────────────────────
+What it does:
+  Centralised model and data loading with Streamlit caching.
+
+@st.cache_resource:
+  Used for models (PyTorch, ALS, ViT). cache_resource stores the object
+  in memory for the lifetime of the Streamlit server process. All pages
+  and all users (in single-user mode) share the same model instance.
+  Loading a 500MB model once vs on every page navigation is the difference
+  between a usable and an unusable demo.
+
+@st.cache_data:
+  Used for DataFrames. cache_data serialises the return value, so each
+  call gets a fresh copy — safe for mutable operations like sampling.
+  cache_resource shares the same object — unsafe for mutable state.
+
+Fallback demo data:
+  When streaming_events.parquet doesn't exist (pipeline not yet run),
+  load_events() generates a synthetic dataset using numpy. This means
+  all pages work and show meaningful output even on a fresh clone with
+  no data. Critical for demos where you can't guarantee the full pipeline
+  has run.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: interface/components/pipeline_runner.py
+────────────────────────────────────────────────────────────────────────────
+What it does:
+  Runs Python scripts as subprocesses and streams their stdout into a
+  Streamlit code block in real time.
+
+How it works:
+  1. subprocess.Popen() launches the script with stdout=PIPE.
+  2. A background thread reads lines from stdout and puts them into a
+     Queue. This is necessary because reading from a pipe blocks — if we
+     read in the main thread, Streamlit's event loop would freeze.
+  3. The main thread polls the Queue with a 100ms timeout, updates the
+     Streamlit placeholder, and yields control back to Streamlit's loop.
+  4. When the sentinel None appears in the Queue (pushed by the reader
+     thread when the stream closes), the main loop ends.
+
+Session state schema:
+  st.session_state["_runs"][key] = {
+    "status": "idle" | "running" | "done" | "error",
+    "started": datetime,
+    "elapsed": float,
+    "lines": list[str],
+    "returncode": int
+  }
+
+  This persists the run history across Streamlit reruns (which happen on
+  every widget interaction). Without session state, the output would
+  disappear every time the user interacts with any widget.
+
+Why not st.subprocess or similar?
+  Streamlit has no built-in subprocess primitive. This is the standard
+  pattern: subprocess.Popen + threading.Thread + queue.Queue.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: interface/components/docker_manager.py
+────────────────────────────────────────────────────────────────────────────
+What it does:
+  Controls Docker Compose services (start, stop, build, logs) from the
+  Streamlit interface. Displays real-time container status.
+
+How it works:
+  docker_available(): runs `docker info` and checks exit code. If Docker
+    Desktop isn't running, this returns False and we show an error.
+
+  _get_ps(): runs `docker compose ps --format {{.Service}}\t{{.State}}`
+    and parses the tab-separated output into a {service: state} dict.
+    Falls back to `docker-compose ps` for Docker Compose v1.
+
+  _stream_compose_cmd(): identical threading pattern to pipeline_runner —
+    Popen + background reader thread + queue + Streamlit placeholder.
+
+  Per-service controls:
+    ▶ Start  → docker compose up -d {service}
+    ⏹ Stop   → docker compose stop {service}
+    📋 Logs  → docker compose logs --tail 80 {service}
+    Rebuild  → docker compose up --build -d {service}
+
+  Global controls:
+    Start all  → docker compose up -d
+    Stop all   → docker compose down
+    Build all  → docker compose up --build -d
+
+Docker Compose v1 vs v2 compatibility:
+  Docker Compose v2 uses `docker compose` (space, no hyphen).
+  Docker Compose v1 uses `docker-compose` (hyphen).
+  The code tries v2 first and falls back to v1 if needed.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: interface/pages/01_overview.py
+────────────────────────────────────────────────────────────────────────────
+Sections:
+  Module status cards — polls data_status() for artefact file existence
+  Dataset overview    — ratings + events KPIs and charts
+  Pipeline controls   — one expander per module, run_script() calls
+  Docker panel        — render_docker_panel() from docker_manager.py
+  Session run history — render_run_history() summary table
+  Data flow diagram   — ASCII art of module connections
+
+────────────────────────────────────────────────────────────────────────────
+FILE: interface/pages/02_recommender.py
+────────────────────────────────────────────────────────────────────────────
+Tabs:
+  Get Recommendations — user ID input, model choice, rec table + score bar
+  Similar Items       — movie selector, similarity scores from ALS
+  Evaluation          — NDCG/MAP/Hit/Novelty/Coverage with radar chart;
+                        runs evaluate_recommender() on a 10% held-out split
+  Embedding Explorer  — PCA projection of ALS item factors, coloured by genre
+
+────────────────────────────────────────────────────────────────────────────
+FILE: interface/pages/03_ab_engine.py
+────────────────────────────────────────────────────────────────────────────
+Tabs:
+  Frequentist — z-test results, CI plot, Welch's t-test for dwell
+  Bayesian    — Beta-Binomial posterior histogram, P(treatment > control)
+  Causal      — DiD OLS results + parallel trends plot; PSM with run button
+  Sample Size — power curve, required n for current baseline + chosen MDE
+
+────────────────────────────────────────────────────────────────────────────
+FILE: interface/pages/04_analysis.py
+────────────────────────────────────────────────────────────────────────────
+Sections:
+  Memo header      — question, hypothesis, primary metric, guard-rails
+  Group means      — KPI cards + grouped bar by metric and arm
+  OLS regression   — coefficient table with significance indicators
+  Cohort breakdown — power/casual/lurker comparison table + bar chart
+  Findings         — highlighted summary + expandable full findings block
+
+────────────────────────────────────────────────────────────────────────────
+FILE: interface/pages/05_diffusion.py
+────────────────────────────────────────────────────────────────────────────
+Tabs:
+  Generate Poster  — genre dropdown, DDIM steps, eta, seed → generated image
+                     + training progression grid from saved sample checkpoints
+  Classify & Explain — poster upload → genre probs bar chart + rollout heatmap
+  Architecture     — U-Net diagram, DDIM explanation, ViT + rollout explainer,
+                     key references table
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 8 — INFRASTRUCTURE FILES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+────────────────────────────────────────────────────────────────────────────
+FILE: docker-compose.yml
+────────────────────────────────────────────────────────────────────────────
+Defines four services:
+  recommender-api  — M2 FastAPI on :8001
+  ab-api           — M3 FastAPI on :8002
+  ab-dashboard     — M3 Streamlit on :8501
+  diffusion-demo   — M5 Gradio on :7860
+
+All services mount ./data:/app/data so they read the same artefacts
+produced by the pipeline scripts. The interface itself (this Streamlit app)
+is NOT in docker-compose — it runs locally.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: .github/workflows/ci.yml
+────────────────────────────────────────────────────────────────────────────
+Three jobs:
+  lint   — ruff (fast linter) + black (formatter check)
+  test   — pytest on tests/ directory
+  build  — docker-compose build (checks all Dockerfiles parse correctly)
+
+Jobs are sequential: lint → test → build. If linting fails, tests don't
+run (fail fast). This prevents wasted CI minutes.
+
+────────────────────────────────────────────────────────────────────────────
+FILE: .streamlit/config.toml
+────────────────────────────────────────────────────────────────────────────
+Forces UTF-8 for the Streamlit server process. Critical on Windows where
+the default codepage (cp1251 on Cyrillic systems, cp1252 on Western) causes
+UnicodeDecodeError when reading source files containing emoji or Unicode
+box-drawing characters. The fileWatcherType = "none" disables the file
+watcher on Windows which sometimes triggers WinError 5 (access denied).
+
+────────────────────────────────────────────────────────────────────────────
+FILE: requirements.txt
+────────────────────────────────────────────────────────────────────────────
+Organised into sections:
+  Core        — numpy, pandas, scikit-learn, scipy
+  PyTorch     — torch, torchvision (CPU by default; GPU via CUDA wheels)
+  Hugging Face— transformers (ViT), datasets, timm (image models)
+  Recommend   — implicit (ALS)
+  Causal/Stats— statsmodels, pymc, arviz
+  APIs        — fastapi, uvicorn, pydantic
+  Data/Storage— google-cloud-bigquery, dvc, pyarrow
+  Tracking    — mlflow
+  Dashboards  — streamlit, gradio, plotly, matplotlib, seaborn
+  Dev         — pytest, black, ruff, python-dotenv, tqdm
+
+Note on PyTorch GPU: the requirements install CPU PyTorch. For GPU training
+(M5 especially), install the CUDA wheel separately:
+  pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+────────────────────────────────────────────────────────────────────────────
+FILES: tests/test_frequentist.py, tests/test_two_tower.py
+────────────────────────────────────────────────────────────────────────────
+Unit tests covering:
+  - proportion_test detects a true 3pp lift at n=5,000 (power test)
+  - proportion_test doesn't false-positive with equal rates (specificity)
+  - means_test detects a 10-unit mean difference
+  - sample size calculator returns plausible n for standard parameters
+  - Two-Tower forward pass produces correct output shapes
+  - BPR loss is non-negative
+  - Score values are in [-1, 1] (cosine similarity range)
+
+Tests are designed to be fast (no training, no data download). The
+Two-Tower tests use tiny models (n_users=100, d_model=32) to run in <1s.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 9 — GETTING STARTED (STEP BY STEP)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Clone and install
+   git clone https://github.com/yourname/cineml
+   cd cineml
+   pip install -r requirements.txt
+
+2. Set up environment
+   cp .env.example .env
+   # Edit .env: add your TMDB_API_KEY and optionally GCP_PROJECT
+
+3. Run the interface (works immediately with demo data)
+   streamlit run interface/app.py
+
+4. Run M1 pipeline (from the interface Pipeline Controls tab, or CLI)
+   python module1_data_pipeline/fetch_movielens.py
+   python module1_data_pipeline/fetch_tmdb.py --limit 2000
+   python module1_data_pipeline/event_simulator.py
+
+5. Train M2 models
+   python module2_recommender/train.py --model als
+   python module2_recommender/train.py --model two-tower --epochs 20
+
+6. Train M5 (MNIST first, then TMDB on GPU)
+   python module5_diffusion_vit/diffusion/train.py --dataset mnist --epochs 20
+   python module5_diffusion_vit/vit/finetune.py --data-dir data/raw/tmdb/posters
+
+7. Start Docker services (from the interface Docker panel, or CLI)
+   docker compose up -d
+
+8. Open the full interface
+   http://localhost:8501
+
+Build sequence if starting fresh (9 months plan):
+  Month 1    → M1 pipeline
+  Month 1-3  → M2 recommender (learn PyTorch with Two-Tower)
+  Month 3-5  → M3 A/B engine
+  Month 5-6  → M4 analysis memo (fast: mostly writing)
+  Month 6-9  → M5 diffusion + ViT (hardest: implement DDPM from scratch)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 10 — KEY REFERENCES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Recommender Systems:
+  Hu, Koren, Volinsky (2008) — Collaborative Filtering for Implicit Feedback
+  Rendle et al. (2009) — BPR: Bayesian Personalised Ranking
+  Covington, Adams, Sargin (2016) — Deep Neural Networks for YouTube Recs
+  He et al. (2017) — Neural Collaborative Filtering
+
+Experimentation:
+  Kohavi, Tang, Xu (2020) — Trustworthy Online Controlled Experiments
+  Wald (1945) — Sequential Analysis (SPRT)
+  Angrist & Pischke (2009) — Mostly Harmless Econometrics (DiD)
+  Rosenbaum & Rubin (1983) — The Central Role of the Propensity Score
+
+Diffusion Models:
+  Ho, Jain, Abbeel (2020) — Denoising Diffusion Probabilistic Models
+  Song et al. (2021) — Denoising Diffusion Implicit Models
+  Nichol & Dhariwal (2021) — Improved DDPMs (cosine schedule)
+  Rombach et al. (2022) — Latent Diffusion Models (Stable Diffusion)
+
+Vision Transformers:
+  Dosovitskiy et al. (2021) — An Image is Worth 16x16 Words (ViT)
+  Abnar & Zuidema (2020) — Quantifying Attention Flow (Attention Rollout)
+
+Evaluation:
+  Jarvelin & Kekalainen (2002) — Cumulated Gain-Based Evaluation (NDCG)
+  Heusel et al. (2017) — GANs Trained by a Two Time-Scale Update Rule (FID)
+
+================================================================================
+  END OF DOCUMENTATION
+================================================================================

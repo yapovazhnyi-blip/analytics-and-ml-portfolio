@@ -1,0 +1,32 @@
+# Data — all generated or downloadable, too large for GitHub
+data/
+
+# Trained models
+*.pt
+*.pkl
+*.pth
+
+# MLflow experiment tracking
+mlruns/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.Python
+
+# Secrets
+.env
+secrets/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
