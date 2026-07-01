@@ -1,0 +1,144 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]          # also trigger on version tags (v1.0.0, v2.3.1, …)
+  workflow_dispatch:      # allow manual trigger from the Actions UI
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false   # never cancel a deploy in progress
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}   # e.g. yapovazhnyi-blip/analytics-and-ml-portfolio
+
+jobs:
+  # ── 1. Run tests before building ─────────────────────────────────────────
+  test:
+    name: Pre-deploy tests
+    uses: ./.github/workflows/test.yml    # re-use the test workflow
+
+  # ── 2. Build and push Docker image ────────────────────────────────────────
+  build:
+    name: Build Docker image
+    needs: test              # only build if tests pass
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write        # needed to push to GHCR
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build-push.outputs.digest }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Docker buildx (multi-platform builder) ────────────────────────────
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── Authenticate to GitHub Container Registry ─────────────────────────
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}  # auto-provided by Actions
+
+      # ── Extract metadata for tags and labels ──────────────────────────────
+      # Tags: latest (main), v1.0.0 (tag), sha-abc1234 (always)
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/crucible-backend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      # ── Build and push (multi-platform: linux/amd64 + linux/arm64) ────────
+      # linux/arm64 covers AWS Graviton, Apple Silicon Docker, and Raspberry Pi.
+      - name: Build and push Docker image
+        id: build-push
+        uses: docker/build-push-action@v5
+        with:
+          context: backend/
+          file: backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          # Layer caching: reuse layers from the previous push on the same branch
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/crucible-backend:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/crucible-backend:buildcache,mode=max
+
+      # ── Sign the image with cosign (supply-chain security) ────────────────
+      # cosign produces a cryptographic signature stored in the registry,
+      # allowing users to verify the image was built by this workflow.
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image with cosign (keyless OIDC)
+        run: |
+          cosign sign --yes \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/crucible-backend@${{ steps.build-push.outputs.digest }}
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+
+  # ── 3. Deploy to staging (example: Railway / Render / Fly.io) ────────────
+  # Uncomment and configure for your deployment target.
+  #
+  # deploy-staging:
+  #   name: Deploy to staging
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   environment:
+  #     name: staging
+  #     url: https://crucible-staging.example.com
+  #   steps:
+  #     - name: Deploy via Railway
+  #       run: railway deploy --service crucible-backend
+  #       env:
+  #         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+  # ── 4. Post-deploy smoke test ──────────────────────────────────────────────
+  # smoke-test:
+  #   name: Smoke test
+  #   needs: deploy-staging
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Health check
+  #       run: |
+  #         curl --fail --retry 5 --retry-delay 5 \
+  #           https://crucible-staging.example.com/api/v1/health
+
+  # ── 5. Create GitHub release on version tags ──────────────────────────────
+  release:
+    name: Create release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            ## Docker Image
+            ```
+            docker pull ghcr.io/${{ github.repository }}/crucible-backend:${{ github.ref_name }}
+            ```
+            **Image digest:** `${{ needs.build.outputs.image-digest }}`

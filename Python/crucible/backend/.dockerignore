@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.log
+
+# Development data (keep data/ structure but not actual data files)
+data/datasets/*.csv
+data/datasets/*.parquet
+data/models/
+data/storage/
+data/rag/
+*.db
+*.sqlite3
+
+# Editor & OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# CI
+.github/
+
+# Docs
+*.md
+docs/
+
+# Secrets (should never be in the repo anyway)
+.env
+.env.*
+secrets/

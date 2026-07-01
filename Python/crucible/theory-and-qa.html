@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crucible — Theory &amp; Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --charcoal: #18140f;
+    --ash:      #251f18;
+    --ash-2:    #2f281f;
+    --ember:    #ff7a3d;
+    --ember-dim:#c2552a;
+    --copper:   #c9854a;
+    --smoke:    #a89a8a;
+    --paper:    #f3ece0;
+    --paper-dim:#cfc4b4;
+    --border:   #3a3026;
+    --green:    #7fb069;
+    --blue:     #6a9fb5;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--charcoal);
+    background-image:
+      radial-gradient(ellipse 800px 400px at 15% -10%, rgba(255,122,61,0.10), transparent),
+      radial-gradient(ellipse 600px 300px at 100% 10%, rgba(201,133,74,0.06), transparent);
+    color: var(--paper);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  ::selection { background: var(--ember); color: var(--charcoal); }
+
+  /* ── Header ───────────────────────────────────────────────────────────── */
+  header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand-mark {
+    width: 38px; height: 38px;
+    border-radius: 4px;
+    background: linear-gradient(155deg, var(--ember) 0%, var(--ember-dim) 60%, #7a3a1c 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-weight: 700; font-size: 18px;
+    color: var(--charcoal);
+    box-shadow: 0 0 22px rgba(255,122,61,0.45), inset 0 1px 0 rgba(255,255,255,0.3);
+    flex-shrink: 0;
+  }
+  .brand h1 {
+    font-family: var(--font-display);
+    font-size: 21px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .brand p {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    color: var(--smoke);
+    font-family: var(--font-mono);
+  }
+
+  .search-wrap { position: relative; flex: 1; max-width: 380px; min-width: 220px; }
+  #search {
+    width: 100%;
+    background: var(--ash);
+    border: 1px solid var(--border);
+    color: var(--paper);
+    border-radius: 8px;
+    padding: 10px 14px 10px 38px;
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    outline: none;
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  #search:focus {
+    border-color: var(--ember-dim);
+    box-shadow: 0 0 0 3px rgba(255,122,61,0.18), 0 0 18px rgba(255,122,61,0.12);
+  }
+  .search-icon {
+    position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+    color: var(--smoke); font-size: 14px; pointer-events: none;
+  }
+
+  /* ── Layout ───────────────────────────────────────────────────────────── */
+  .layout { display: flex; min-height: calc(100vh - 95px); }
+
+  nav.sidebar {
+    width: 230px;
+    flex-shrink: 0;
+    padding: 24px 14px;
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    height: calc(100vh - 95px);
+    overflow-y: auto;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 13.5px;
+    color: var(--paper-dim);
+    margin-bottom: 2px;
+    border-left: 2px solid transparent;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    user-select: none;
+  }
+  .nav-item:hover { background: var(--ash); color: var(--paper); }
+  .nav-item.active {
+    background: rgba(255,122,61,0.10);
+    color: var(--ember);
+    border-left-color: var(--ember);
+    box-shadow: -2px 0 14px -4px rgba(255,122,61,0.5);
+  }
+  .nav-item .count {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--smoke);
+    background: var(--ash-2);
+    padding: 1px 6px;
+    border-radius: 9px;
+  }
+  .nav-item.active .count { color: var(--ember); background: rgba(255,122,61,0.15); }
+
+  main {
+    flex: 1;
+    padding: 32px 40px 80px;
+    max-width: 860px;
+  }
+
+  .section-intro {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  .section-sub {
+    color: var(--smoke);
+    font-size: 14px;
+    margin: 0 0 28px;
+    max-width: 620px;
+  }
+
+  /* ── Q&A accordion ────────────────────────────────────────────────────── */
+  .qa-item {
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    margin-bottom: 10px;
+    background: var(--ash);
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .qa-item.open { border-color: var(--ember-dim); }
+  .qa-q {
+    padding: 16px 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 500;
+    font-size: 14.5px;
+    user-select: none;
+  }
+  .qa-q .chevron {
+    color: var(--ember);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+    width: 14px;
+  }
+  .qa-item.open .chevron { transform: rotate(90deg); }
+  .qa-a {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease, padding 0.25s ease;
+    color: var(--paper-dim);
+    font-size: 13.8px;
+    line-height: 1.7;
+  }
+  .qa-item.open .qa-a { max-height: 600px; padding: 0 18px 18px 44px; }
+  .qa-a code {
+    font-family: var(--font-mono);
+    background: var(--ash-2);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12.5px;
+    color: var(--copper);
+  }
+  .qa-a .file-ref {
+    display: inline-block;
+    margin-top: 8px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--smoke);
+  }
+
+  .no-results { color: var(--smoke); font-size: 13.5px; padding: 30px 0; }
+
+  /* ── Ask Anything panel ───────────────────────────────────────────────── */
+  .chat-panel { display: flex; flex-direction: column; height: calc(100vh - 220px); max-height: 640px; }
+  .chat-log {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--ash);
+    padding: 18px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .chat-empty {
+    color: var(--smoke);
+    font-size: 13.5px;
+    text-align: center;
+    margin: auto;
+    max-width: 320px;
+  }
+  .msg { display: flex; gap: 10px; max-width: 88%; }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .msg-bubble {
+    padding: 11px 15px;
+    border-radius: 10px;
+    font-size: 13.8px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+  }
+  .msg.user .msg-bubble { background: rgba(255,122,61,0.14); border: 1px solid rgba(255,122,61,0.3); }
+  .msg.assistant .msg-bubble { background: var(--ash-2); border: 1px solid var(--border); }
+  .msg-avatar {
+    width: 26px; height: 26px; border-radius: 6px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  }
+  .msg.user .msg-avatar { background: var(--ember); color: var(--charcoal); }
+  .msg.assistant .msg-avatar { background: var(--ash-2); color: var(--copper); border: 1px solid var(--border); }
+
+  .chat-input-row { display: flex; gap: 10px; }
+  #chat-input {
+    flex: 1;
+    background: var(--ash);
+    border: 1px solid var(--border);
+    color: var(--paper);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: var(--font-body);
+    font-size: 13.8px;
+    resize: none;
+    outline: none;
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  #chat-input:focus {
+    border-color: var(--ember-dim);
+    box-shadow: 0 0 0 3px rgba(255,122,61,0.18), 0 0 18px rgba(255,122,61,0.12);
+  }
+  #chat-send {
+    background: var(--ember);
+    color: var(--charcoal);
+    border: none;
+    border-radius: 8px;
+    padding: 0 22px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 13.5px;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.1s;
+  }
+  #chat-send:hover { filter: brightness(1.1); }
+  #chat-send:active { transform: scale(0.97); }
+  #chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .typing-dots { display: inline-flex; gap: 3px; align-items: center; padding: 4px 0; }
+  .typing-dots span {
+    width: 5px; height: 5px; border-radius: 50%; background: var(--copper);
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+  .suggestion-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .chip {
+    border: 1px solid var(--border);
+    background: var(--ash);
+    color: var(--paper-dim);
+    border-radius: 16px;
+    padding: 7px 13px;
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .chip:hover { border-color: var(--ember-dim); color: var(--ember); }
+
+  .chat-error {
+    background: rgba(220,90,60,0.12);
+    border: 1px solid rgba(220,90,60,0.35);
+    color: #e09a85;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    margin-bottom: 12px;
+  }
+
+  @media (max-width: 760px) {
+    .layout { flex-direction: column; }
+    nav.sidebar { width: 100%; height: auto; position: static; display: flex; overflow-x: auto; gap: 4px; padding: 14px; }
+    .nav-item { flex-shrink: 0; }
+    main { padding: 24px 18px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">C</div>
+    <div>
+      <h1>Crucible — Theory &amp; Reference</h1>
+      <p>raw material + heat = refined output</p>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input id="search" type="text" placeholder="Search Python, Docker, ML theory…" autocomplete="off">
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="sidebar" id="sidebar"></nav>
+  <main id="main"></main>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════
+// CURATED Q&A DATA
+// ════════════════════════════════════════════════════════════════════════
+
+const CATEGORIES = [
+  { id: 'python',  label: 'Python Concepts' },
+  { id: 'docker',  label: 'Docker & Infra' },
+  { id: 'deploy',  label: 'Deployment' },
+  { id: 'ml',      label: 'ML Theory' },
+  { id: 'math',    label: 'Math & Statistics' },
+  { id: 'libs',    label: 'Libraries & Frameworks' },
+  { id: 'arch',    label: 'Crucible Architecture' },
+  { id: 'interview', label: 'Interview Prep' },
+  { id: 'ask',     label: 'Ask Anything', special: true },
+];
+
+const QA = [
+
+  // ── PYTHON ──────────────────────────────────────────────────────────────
+  { cat: 'python', q: 'What is async/await, and why does this codebase use it everywhere?',
+    a: `<code>async</code>/<code>await</code> lets one function pause while waiting on something slow (a database query, a network call) and hand control back to the event loop, which uses that time to work on a different request. Without it, a slow database call would freeze the entire server for every other user until it finished. Crucible's request handlers are almost all <code>async def</code> because nearly every one of them waits on I/O — reading a file, querying SQLAlchemy, calling an external API — and that's exactly the situation async is for.`,
+    ref: 'routers/*.py — every route handler' },
+
+  { cat: 'python', q: 'What is a context manager (the `with` statement)?',
+    a: `A context manager guarantees that setup and cleanup code both run, even if something goes wrong in between. <code>async with AsyncSessionLocal() as db:</code> opens a database session, and — no matter whether the code inside succeeds, raises an exception, or returns early — the session is always closed afterward. Writing the equivalent by hand would mean a <code>try/finally</code> block at every single call site; the context manager makes that mistake-proof by construction.`,
+    ref: 'database.py, used throughout routers/' },
+
+  { cat: 'python', q: 'What does `@dataclass` do, and why use it instead of a plain class?',
+    a: `<code>@dataclass</code> auto-generates the boring parts of a class — <code>__init__</code>, <code>__repr__</code>, equality comparison — from a list of typed fields, so you write <code>class TrackedRun: run_id: str; provider: str</code> instead of a 10-line <code>__init__</code> method. Crucible uses dataclasses for every internal "result" object (<code>TrainingResult</code>, <code>TrackedRun</code>, <code>DriftReport</code>) because they're pure data with no behaviour beyond holding values — exactly what dataclasses are for.`,
+    ref: 'training/runner.py, tracking/base.py, drift/detector.py' },
+
+  { cat: 'python', q: 'What are type hints actually doing at runtime — do they enforce anything?',
+    a: `By themselves, no. <code>def run(target: str) -> int</code> doesn't stop you from passing a number for <code>target</code> — Python ignores type hints completely at runtime. They exist for two things: your editor/IDE can catch mismatches before you run the code, and tools like <strong>Pydantic</strong> read them to build real runtime validation on top. That's the distinction: a bare type hint is documentation; a Pydantic model's type hint is an enforced contract.`,
+    ref: 'schemas/*.py (Pydantic enforces), everywhere else (documentation only)' },
+
+  { cat: 'python', q: 'How does FastAPI\'s `Depends()` work — what is dependency injection?',
+    a: `Dependency injection means a function declares what it needs as a parameter, and something else is responsible for supplying it — the function itself never constructs its own dependencies. <code>db: AsyncSession = Depends(get_db)</code> tells FastAPI "before calling this route, run <code>get_db()</code> and pass the result in as <code>db</code>." This is what makes testing painless: tests swap in a different <code>get_db</code> that points at an in-memory database, and every route that depends on it gets the swapped version automatically, with zero changes to the route code.`,
+    ref: 'auth/dependencies.py, database.py' },
+
+  { cat: 'python', q: 'What is a decorator, using `@router.post(...)` as the example?',
+    a: `A decorator is a function that wraps another function to add behaviour without changing its code. <code>@router.post("/experiments")</code> takes the function defined right under it and registers it as the handler for <code>POST /experiments</code> — the decorator is doing the registration; your function just focuses on what happens when that route is called. Python's decorator syntax (<code>@something</code>) is shorthand for <code>my_func = router.post("/experiments")(my_func)</code>.`,
+    ref: 'Every router file' },
+
+  { cat: 'python', q: 'What is an abstract base class (ABC), and why does Crucible use one for every provider?',
+    a: `An ABC defines a contract — a set of methods that must exist — without providing a full implementation. <code>class StorageBackend(ABC): @abstractmethod async def write(...)</code> means any class claiming to be a <code>StorageBackend</code> is forced to implement <code>write()</code>, or Python refuses to let you instantiate it. This is what makes Crucible's <code>LocalStorage</code> and <code>S3Storage</code> truly interchangeable — calling code only ever depends on the abstract contract, never on which concrete implementation is plugged in.`,
+    ref: 'storage/base.py, llm/base.py, jobs/queue.py, tracking/base.py' },
+
+  { cat: 'python', q: 'What does `from __future__ import annotations` do, and why is it at the top of almost every file?',
+    a: `It makes all type hints in that file lazy strings instead of evaluated immediately — which matters because it lets you write <code>def foo() -> "MyClass"</code> as <code>def foo() -> MyClass</code> even if <code>MyClass</code> is defined later in the file, or refers to the class itself recursively. Without it, Python would try to evaluate the type hint the moment the function is defined and fail with a <code>NameError</code> for anything not yet defined.`,
+    ref: 'Nearly every backend file' },
+
+  { cat: 'python', q: 'What\'s the difference between `asyncio.create_task()` and just `await`?',
+    a: `<code>await my_func()</code> runs <code>my_func</code> and pauses the current function until it finishes — sequential. <code>asyncio.create_task(my_func())</code> schedules <code>my_func</code> to run concurrently and returns immediately, without waiting — the current function keeps going while it runs in the background. Crucible uses this for genuinely fire-and-forget work, like kicking off a training job and returning an HTTP response to the browser immediately rather than making the user's request hang until training finishes.`,
+    ref: 'jobs/queue.py InMemoryJobQueue.enqueue()' },
+
+  { cat: 'python', q: 'What does `try/except/finally` guarantee?',
+    a: `The <code>finally</code> block runs no matter what — whether the <code>try</code> block succeeds, raises an exception that gets caught, or raises one that doesn't. Crucible's Weights &amp; Biases backend uses this specifically to guarantee <code>wandb.finish()</code> always runs, even if logging a metric mid-run throws an exception — otherwise a single failed metric log would leave an orphaned "running" run visible in the W&amp;B dashboard forever.`,
+    ref: 'tracking/wandb_backend.py' },
+
+  // ── DOCKER & INFRA ──────────────────────────────────────────────────────
+  { cat: 'docker', q: 'What is a multi-stage Docker build, and why does Crucible use one?',
+    a: `A multi-stage build uses more than one <code>FROM</code> line: an early stage installs heavy build tools (compilers, headers) to compile dependencies, and a later, separate stage copies <em>only the finished result</em> into a clean, minimal image. The build tools never end up in the final image. Crucible's Dockerfile compiles native extensions (numpy, cryptography) in a "builder" stage with <code>gcc</code> installed, then copies just the installed Python packages into a slim runtime stage — the final image doesn't carry a C compiler it'll never use again.`,
+    ref: 'backend/Dockerfile' },
+
+  { cat: 'docker', q: 'What\'s the actual difference between a Docker image and a container?',
+    a: `An image is a frozen, read-only template — the result of running every instruction in a Dockerfile. A container is a running (or stopped) instance created <em>from</em> an image, with its own writable filesystem layer on top. The relationship is like a class and an object: one image, <code>crucible-backend:latest</code>, can spin up many independent running containers.`,
+    ref: 'backend/Dockerfile, docker-compose.yml' },
+
+  { cat: 'docker', q: 'What does `docker-compose.yml` actually do?',
+    a: `It describes a group of containers that should run together as one system — Crucible's backend, frontend, MLflow, Redis, and an ARQ worker — including how they're networked to each other (services can reach each other by name, e.g. <code>redis:6379</code>) and what each one depends on. <code>docker compose up</code> builds and starts everything in the right order in one command, instead of you running five separate <code>docker run</code> commands and manually wiring up networking.`,
+    ref: 'docker-compose.yml' },
+
+  { cat: 'docker', q: 'Why does the Dockerfile create a non-root user instead of just running as root?',
+    a: `If an attacker ever exploits a vulnerability inside the running container, the privileges they get are limited to whatever user the container process runs as. Root inside a container often has more access to the host than people expect (especially with certain misconfigurations), so giving the application its own unprivileged user (<code>crucible</code>, UID 1001) limits the blast radius of a compromise. It's a small amount of extra setup for a real reduction in risk.`,
+    ref: 'backend/Dockerfile' },
+
+  { cat: 'docker', q: 'What is a `HEALTHCHECK`, and why does Crucible\'s need a 30-second start period?',
+    a: `<code>HEALTHCHECK</code> tells Docker (and orchestrators like Kubernetes or ECS) how to ask "is this container actually working," not just "is the process still running" — a hung process can still be technically alive. Crucible's first action on startup is running Alembic migrations, which takes a few seconds; without <code>--start-period=30s</code>, Docker would run the health check immediately, see it fail (the server isn't ready to answer yet), and restart the container in an endless loop before migrations ever finish.`,
+    ref: 'backend/Dockerfile' },
+
+  { cat: 'docker', q: 'What is Docker layer caching, and why does `requirements.txt` get copied before the application code?',
+    a: `Each instruction in a Dockerfile produces a cached layer; if a later build's instruction and its inputs are identical to a previous build, Docker reuses the cached result instead of re-running it. Docker invalidates a layer — and every layer after it — the moment anything in that step changes. Copying <code>requirements.txt</code> and running <code>pip install</code> <em>before</em> copying the rest of the application code means a one-line code change doesn't force a multi-minute reinstall of every dependency — only an actual dependency change does.`,
+    ref: 'backend/Dockerfile' },
+
+  { cat: 'docker', q: 'What does GitHub Actions / CI actually do, in plain terms?',
+    a: `CI (Continuous Integration) means every code change automatically triggers an isolated, clean-machine run of your tests, linter, and build — before a human ever has to. GitHub Actions is GitHub's own CI system: <code>test.yml</code> spins up a fresh Ubuntu VM, installs Python, runs all 1,024 tests, and reports pass/fail directly on the pull request. The point is catching "works on my machine, breaks everywhere else" problems automatically, every single time, not just when someone remembers to check.`,
+    ref: '.github/workflows/test.yml' },
+
+  { cat: 'docker', q: 'What does OIDC authentication mean for the ECS deploy workflow, and why no stored AWS keys?',
+    a: `OIDC (OpenID Connect) lets GitHub Actions request short-lived, temporary AWS credentials by presenting a cryptographically signed token proving "this is really GitHub Actions, running this specific workflow" — AWS verifies that token against a trust policy and issues credentials that expire shortly after. The alternative — storing a permanent <code>AWS_SECRET_ACCESS_KEY</code> as a GitHub secret — means that key exists indefinitely and would do real damage if it ever leaked. OIDC removes the need for a long-lived secret to exist anywhere at all.`,
+    ref: '.github/workflows/deploy-ecs.yml' },
+
+  { cat: 'docker', q: 'Why does Crucible only run with `--workers 1`?',
+    a: `Two independent reasons converge on the same constraint. SQLite (the default database) only safely supports one writer at a time — multiple Uvicorn worker processes would all try to write to the same SQLite file and could corrupt it under concurrent writes. Separately, the retraining scheduler (APScheduler) keeps its job list in that single process's memory — running multiple workers would mean each one independently schedules and fires the same retraining policy, causing duplicate runs. Both point to the same fix: one worker process, documented at both the Dockerfile and the scheduler module.`,
+    ref: 'backend/Dockerfile, retraining/scheduler.py' },
+
+  // ── ML THEORY ───────────────────────────────────────────────────────────
+  { cat: 'ml', q: 'What is hyperparameter optimization, and what does Optuna\'s TPE sampler actually do?',
+    a: `A model has settings that aren't learned from data — how many trees, how deep, what learning rate — and the right values depend on the dataset. Hyperparameter optimization searches for good values automatically instead of guessing. Optuna's TPE (Tree-structured Parzen Estimator) sampler is smarter than a random or grid search: after a handful of trials, it builds two probability models — "what hyperparameters tend to score well" and "what hyperparameters tend to score poorly" — and samples the next trial from the region that looks most promising, the way a human would after watching a few results come in.`,
+    ref: 'training/runner.py' },
+
+  { cat: 'ml', q: 'What is a pruner (MedianPruner / HyperbandPruner) doing in a hyperparameter search?',
+    a: `A pruner kills a trial early if it's clearly going badly, instead of wasting the rest of the compute budget letting it finish. <code>MedianPruner</code> stops a trial if, partway through cross-validation, its score is already below the running median of all trials so far. <code>HyperbandPruner</code> is more aggressive: it follows a "successive halving" schedule, allocating more of the budget to trials that already look promising and cutting the rest at each checkpoint — better suited when you're running enough trials (50+) that the extra pruning pays for itself.`,
+    ref: 'training/runner.py (pruner_type config)' },
+
+  { cat: 'ml', q: 'What is SHAP, and how is it different from a model\'s built-in `feature_importances_`?',
+    a: `<code>feature_importances_</code> (from a tree model) tells you which features the model relied on <em>overall</em>, averaged across every prediction — useful, but it can't explain one specific prediction. SHAP (SHapley Additive exPlanations) is grounded in cooperative game theory: it computes, for one individual prediction, exactly how much each feature pushed the output up or down relative to the average prediction, in a way that's mathematically guaranteed to add up correctly. That's the difference between "age matters in general" and "for this specific customer, age added +12% to their predicted churn risk."`,
+    ref: 'explainability/shap_runner.py' },
+
+  { cat: 'ml', q: 'What is probability calibration, and why would a trained model need it?',
+    a: `A classifier outputs something that looks like a probability, but tree ensembles in particular are often <em>overconfident</em> — a model might say "90% probability of churn" for a group of customers where only 65% actually churn. Calibration is a post-hoc correction that re-maps the model's raw output so its stated probabilities match observed reality, without changing which predictions rank higher than others (so it doesn't affect accuracy or AUC). Isotonic regression and Platt scaling (sigmoid) are the two common methods — Crucible picks between them based on dataset size, since isotonic needs more data to fit reliably.`,
+    ref: 'training/runner.py (calibration step)' },
+
+  { cat: 'ml', q: 'What is cross-validation, and why does the holdout set stay separate from it?',
+    a: `Cross-validation splits the training data into several folds, trains on some, validates on the rest, and rotates — giving a more reliable performance estimate than a single train/validation split, since every row gets used for validation exactly once. But cross-validation is still used <em>during</em> hyperparameter search, which means the search process has effectively "seen" all of that data indirectly. The holdout set is kept completely separate and untouched until the very end, so the final reported metric reflects genuinely unseen data — not data the search process was, in any sense, optimizing against.`,
+    ref: 'training/runner.py' },
+
+  { cat: 'ml', q: 'What is data leakage, with a concrete example?',
+    a: `Leakage is when a feature available at training time contains information that wouldn't actually be available at prediction time in the real world — the model learns to "cheat" using that signal, scores great in testing, and then fails in production where the leaked information doesn't exist yet. Concrete example: predicting whether a loan will default, using a feature called <code>days_in_collections</code> — that field is only populated <em>after</em> a loan has already defaulted, so a model using it isn't really predicting anything; it's just detecting its own target variable through the back door.`,
+    ref: 'profiling/leakage.py' },
+
+  { cat: 'ml', q: 'What is VIF (Variance Inflation Factor), and why is it better than checking pairwise correlation?',
+    a: `Two features can each have low correlation with every other single feature while still being predictable as a group from the rest — three features can be a hidden linear combination of each other without any single pair looking suspicious. VIF catches this by regressing each feature against <em>all</em> the others and measuring how well they predict it; a high VIF means that feature carries little independent information beyond what's already captured elsewhere. This matters because severe multicollinearity makes a linear model's coefficients unstable and hard to interpret, even though it usually doesn't hurt pure predictive accuracy much.`,
+    ref: 'profiling/correlation.py' },
+
+  { cat: 'ml', q: 'What is drift detection, and why does a model need retraining over time even if nothing "broke"?',
+    a: `A model learns the statistical relationships present in its training data. If the real world's data distribution shifts — customer behaviour changes, a new product category appears, an economic shock changes spending patterns — those learned relationships quietly stop matching reality, even though the model itself hasn't changed at all. PSI (Population Stability Index) and the Kolmogorov-Smirnov test both measure how much a feature's current distribution has diverged from its training-time distribution, giving an early warning before accuracy visibly degrades.`,
+    ref: 'drift/detector.py' },
+
+  { cat: 'ml', q: 'What is LoRA (Low-Rank Adaptation), in plain terms?',
+    a: `Fully fine-tuning a large language model means updating every one of its (often billions of) parameters — expensive in compute and storage, and you end up with a whole new copy of the model per task. LoRA instead freezes the original model entirely and trains a much smaller pair of "low-rank" matrices that get added on top during inference. The result is a tiny adapter file (megabytes, not gigabytes) that can be swapped in and out of the same frozen base model — which is exactly what makes the <code>.crucible</code> bundle format practical to email or download.`,
+    ref: 'fine_tuning/trainer.py, fine_tuning/dpo_trainer.py' },
+
+  { cat: 'ml', q: 'What is DPO (Direct Preference Optimization)?',
+    a: `The traditional way to align a model with human preference (RLHF) needs three phases: fine-tune, train a separate reward model on preference data, then use reinforcement learning to optimize against that reward model — complex and prone to instability. DPO proves that the optimal policy from that whole pipeline has a closed-form solution directly in terms of the preference data itself, collapsing it to a single training phase: show the model a <code>(prompt, chosen, rejected)</code> triplet, and directly increase the probability it assigns to the chosen response relative to the rejected one.`,
+    ref: 'fine_tuning/dpo_trainer.py' },
+
+  { cat: 'ml', q: 'What is RAG (Retrieval-Augmented Generation)?',
+    a: `An LLM's knowledge is frozen at training time and can't see your private documents. RAG fixes this without retraining anything: relevant chunks of your documents are found via search (Crucible combines keyword search and semantic vector search) and inserted directly into the prompt alongside the user's question, so the model answers <em>grounded in</em> that retrieved text rather than purely from memory — and can cite exactly which chunk it used.`,
+    ref: 'rag/retriever.py, rag/generator.py' },
+
+  { cat: 'ml', q: 'What is the ReAct pattern for AI agents?',
+    a: `ReAct (Reason + Act) interleaves the model's reasoning with real tool calls in a loop: the model thinks about what to do next, calls a tool (e.g. "list available datasets"), reads the real result, and reasons again with that new information — repeating until it has enough to give a final answer. This is different from just asking an LLM a question once: the model's plan can change based on what it actually discovers, the same way a person debugging a problem adjusts their next step based on what the last command printed.`,
+    ref: 'agents/runner.py' },
+
+  { cat: 'ml', q: 'What does fairness mean in ML, and what is the "4/5ths rule"?',
+    a: `A model can be statistically accurate overall while still treating different demographic groups very differently — e.g. approving loans for one group at a much higher rate than an equally creditworthy other group. The 4/5ths rule (also called disparate impact) is a real legal standard from U.S. employment law (EEOC guidelines): if the selection rate for any group is less than 80% of the rate for the highest-selected group, that's treated as evidence of likely discrimination, warranting further investigation.`,
+    ref: 'fairness/analyzer.py' },
+
+  { cat: 'ml', q: 'What is an Isolation Forest, used for anomaly detection?',
+    a: `It builds an ensemble of random decision trees, each splitting the data on random features at random thresholds. The key insight: an anomalous point — being rare and different — tends to get isolated into its own tiny region in very few splits, while a normal point sits in a dense cluster that takes many splits to separate out. Average that "how many splits did it take to isolate this point" across the whole forest, and you get a natural anomaly score with no labelled data required.`,
+    ref: 'anomaly/algorithms.py' },
+
+  { cat: 'ml', q: 'What is ensemble learning — what do Random Forest, Gradient Boosting, and XGBoost actually have in common?',
+    a: `All three combine many individual decision trees into one stronger model, but by different mechanisms. Random Forest trains many trees independently on random subsets of data and features, then averages their votes — diversity reduces overfitting. Gradient Boosting (and its faster cousins XGBoost, LightGBM, CatBoost) instead trains trees <em>sequentially</em>, where each new tree specifically targets the errors the previous trees made — it's correcting mistakes step by step rather than voting in parallel.`,
+    ref: 'training/model_families.py, training/gbm_families.py' },
+
+  // ── LIBRARIES & FRAMEWORKS ──────────────────────────────────────────────
+  { cat: 'libs', q: 'What is FastAPI, and why was it chosen over Flask or Django?',
+    a: `FastAPI is a Python web framework built around two things Crucible relies on heavily: native <code>async</code> support (so slow I/O doesn't block the server) and automatic request/response validation generated directly from Python type hints via Pydantic. Flask is synchronous by default and needs extensions bolted on for async and validation. Django is full-featured but heavier than needed for an API-only backend with no server-rendered templates. FastAPI also auto-generates the interactive <code>/docs</code> page from the same type hints used for validation — one source of truth for both.`,
+    ref: 'main.py, every routers/*.py file' },
+
+  { cat: 'libs', q: 'What is SQLAlchemy, and what\'s the difference between its sync and async modes?',
+    a: `SQLAlchemy is Python's most widely used ORM (Object-Relational Mapper) — it lets you work with database rows as Python objects (<code>dataset.row_count</code>) instead of writing raw SQL strings everywhere. The sync version blocks the whole thread while a query runs; the async version (<code>AsyncSession</code>, used throughout Crucible) lets the event loop do other work while waiting on the database, which matters because a busy API server is constantly waiting on database I/O.`,
+    ref: 'database.py, models/*.py' },
+
+  { cat: 'libs', q: 'What is Pydantic, and what does it actually validate?',
+    a: `Pydantic turns Python type hints into runtime validation. A schema like <code>class PolicyCreate(BaseModel): promotion_margin: float = Field(ge=0.0, le=1.0)</code> means FastAPI automatically rejects any request where <code>promotion_margin</code> is missing, isn't a number, or is outside 0–1 — with a clear error message — before your route code ever runs. This is what eliminates an entire category of manual <code>if not isinstance(...)</code> validation code that would otherwise be needed at the top of every endpoint.`,
+    ref: 'schemas/*.py' },
+
+  { cat: 'libs', q: 'What is Alembic?',
+    a: `Alembic is SQLAlchemy's schema migration tool. When you add a column to a model, Alembic can compare the model definitions against the actual database schema and auto-generate a script containing the exact <code>ALTER TABLE</code> statements needed to bring the database in line — and a matching "undo" script to reverse it. This is what lets a production database evolve safely over time instead of requiring a full rebuild every time the schema changes.`,
+    ref: 'alembic/versions/ — 9 migrations' },
+
+  { cat: 'libs', q: 'What is Optuna?',
+    a: `Optuna is a hyperparameter optimization framework — it manages the search loop (suggest a set of hyperparameters, run a trial, record the score, suggest the next set informed by everything so far) and provides the TPE sampler and pruners Crucible's AutoML engine is built around. It's "define-by-run," meaning the search space is described directly in the code that runs each trial, rather than in a separate static config file.`,
+    ref: 'training/runner.py' },
+
+  { cat: 'libs', q: 'What\'s the practical difference between MLflow and Weights &amp; Biases?',
+    a: `Both track experiments — params, metrics, artifacts — but MLflow is self-hostable with no external account needed (Crucible runs it via <code>docker-compose.yml</code>, storing data in SQLite or Postgres you control), while W&amp;B is a cloud SaaS product with a richer run-comparison dashboard and built-in team collaboration, at the cost of needing an account and, beyond a free tier, a subscription. Crucible supports both behind the same interface specifically so the choice is configuration, not a rewrite.`,
+    ref: 'tracking/mlflow_backend.py, tracking/wandb_backend.py' },
+
+  { cat: 'libs', q: 'What is LangGraph?',
+    a: `LangGraph is a framework for building multi-step, multi-agent LLM workflows as an explicit state graph — nodes are processing steps (which can call an LLM or run deterministic code), edges define what runs next, and a shared state object flows through the whole graph. Crucible's multi-agent supervisor pattern is built on it: the supervisor node decides which specialist node to route to next, and LangGraph handles passing state between them and looping back to the supervisor after each specialist runs.`,
+    ref: 'agents/multi_agent.py, agents/state.py' },
+
+  { cat: 'libs', q: 'What is APScheduler?',
+    a: `A pure-Python job scheduling library that runs recurring tasks on a timer (cron-like intervals) inside the same process as your application — no separate scheduler service required. Crucible uses it to check each retraining policy on its configured interval. The trade-off, documented directly in the code, is that it only works correctly with a single worker process — multiple processes would each independently fire the same scheduled job.`,
+    ref: 'retraining/scheduler.py' },
+
+  { cat: 'libs', q: 'What is ARQ, and why does it need Redis?',
+    a: `ARQ is an async-native job queue: instead of running a background task inside your API process (where it dies if the process restarts), you push a job description onto a Redis queue, and a completely separate worker process picks it up and runs it — independently scalable, and the job survives if the API process itself restarts mid-deploy. Redis is the shared queue both the API and the worker(s) talk to; it's the thing that makes the job durable and visible across separate processes.`,
+    ref: 'jobs/queue.py ArqJobQueue, jobs/worker_settings.py' },
+
+  { cat: 'libs', q: 'What is OpenTelemetry?',
+    a: `An open standard (and SDK) for distributed tracing, metrics, and logs — instead of scattered log lines, a "trace" captures a whole request's causal tree: which operations happened inside which other operations, and exactly how long each one took. Crucible auto-instruments every HTTP request and adds manual spans around the two operations actually worth measuring (agent tool calls, the profiling pipeline), exportable to the console, or to a real backend like Jaeger or Grafana Tempo.`,
+    ref: 'observability/tracing.py' },
+
+  // ── LIBRARIES — DEEP LEARNING FRAMEWORKS ───────────────────────────────
+  { cat: 'libs', q: 'What is PyTorch, and where does Crucible actually use it?',
+    a: `PyTorch is the dominant deep learning framework for research and the open-source LLM ecosystem — it provides tensors (GPU-accelerated, multi-dimensional arrays), automatic differentiation, and neural network building blocks. Crucible doesn't import PyTorch directly anywhere — instead, it sits underneath the fine-tuning stack: transformers, peft, and trl (the libraries that actually implement loading the base model, applying LoRA adapters, and running SFT/DPO training) are all built on PyTorch as their backend. When fine_tuning/trainer.py trains a LoRA adapter, PyTorch is doing every gradient computation underneath, even though the code never calls torch.* directly.`,
+    ref: 'fine_tuning/trainer.py, fine_tuning/dpo_trainer.py (PyTorch via transformers/peft/trl)' },
+
+  { cat: 'libs', q: 'What is TensorFlow/Keras, and where does Crucible use it?',
+    a: `TensorFlow is Google's deep learning framework; Keras is its high-level, easy-to-use API for building and training neural networks (now bundled directly into TensorFlow as tf.keras). Crucible uses it for exactly one thing: the optional Keras MLP model family in the AutoML search — a simple multi-layer perceptron offered alongside the eight other model families (Random Forest, XGBoost, etc.) as one more option Optuna can try and score. It's registered behind a KERAS_AVAILABLE flag, so the rest of the platform works identically whether or not TensorFlow is installed.`,
+    ref: 'training/keras_families.py' },
+
+  { cat: 'libs', q: 'What\'s the actual difference between PyTorch and TensorFlow as frameworks?',
+    a: `Historically the real divide was eager execution (PyTorch: run each operation immediately, like normal Python — easier to debug, dominant in research) versus static computational graphs (early TensorFlow: define the whole computation first, then run it — faster to optimise and deploy, but much harder to debug). TensorFlow 2 closed most of that gap by making eager execution the default too. Today the practical difference is mostly ecosystem: PyTorch dominates open-source LLM tooling (transformers, peft, trl all assume it), while TensorFlow still has a strong foothold in mobile/edge deployment (TensorFlow Lite) and some large existing production codebases.`,
+    ref: 'training/keras_families.py (TF), fine_tuning/ (PyTorch ecosystem)' },
+
+  { cat: 'libs', q: 'What is automatic differentiation (autograd), and why does every deep learning framework need it?',
+    a: `Training a neural network means computing the gradient of the loss with respect to every single weight, so you know which direction to nudge each one — for a model with millions or billions of parameters, deriving those gradient equations by hand is completely impractical. Autograd solves this by recording every operation performed on a tensor as the forward pass runs, then automatically applying the chain rule backward through that recorded sequence to compute every gradient at once. This is the single mechanism — not a special trick per model — that makes training any of the wildly different architectures these frameworks support actually work.`,
+    ref: 'fine_tuning/dpo_trainer.py (gradient computation during DPO training)' },
+
+  { cat: 'libs', q: 'What is a tensor, and how is it actually different from a NumPy array?',
+    a: `Structurally, a tensor is the same idea as a NumPy array — a multi-dimensional grid of numbers — but with two capabilities NumPy doesn't have: it can live in GPU memory (where the same operation runs across thousands of cores in parallel instead of one CPU core at a time), and it can track the history of operations applied to it for autograd, so gradients can be computed automatically later. A NumPy array is just data; a PyTorch tensor is data plus "how did I get here," which is exactly what's needed for training.`,
+    ref: 'profiling/, training/ (NumPy arrays) vs fine_tuning/ (PyTorch tensors)' },
+
+  { cat: 'libs', q: 'What does running a computation "on GPU" actually mean, practically?',
+    a: `A GPU has thousands of small cores built for doing many simple arithmetic operations simultaneously, versus a CPU's handful of cores built for doing complex sequential logic fast. Matrix multiplication — the operation that dominates both training and inference in deep learning — decomposes naturally into thousands of independent multiply-and-add operations, which is exactly the shape of work a GPU is built for. Moving a tensor "to GPU" copies its data into GPU memory so the framework can dispatch operations on it to that parallel hardware instead of the CPU.`,
+    ref: 'fine_tuning/ (GPU-accelerated when available, CPU fallback otherwise)' },
+
+  { cat: 'libs', q: 'What is JAX, and how does it differ from PyTorch and TensorFlow?',
+    a: `JAX (from Google) takes a different philosophy: instead of an object-oriented "model" with internal state, it treats everything as pure functions you transform — grad() to get a function's gradient, jit() to compile it to fast machine code, vmap() to automatically vectorise it across a batch — all composably. It's popular in research, especially at DeepMind, for exactly that composability, but has a steeper learning curve and a smaller ecosystem of pretrained models and tooling than PyTorch. Crucible doesn't use it, but it's worth knowing as the third major framework in this space, with a meaningfully different design philosophy from the other two.`,
+    ref: '(not used in Crucible — included for framework-landscape awareness)' },
+
+  { cat: 'libs', q: 'Why does Crucible treat TensorFlow as an optional dependency instead of just requiring it?',
+    a: `TensorFlow is a multi-gigabyte install, and the Keras MLP family is one model family out of nine — most users running AutoML on tabular data get equal or better results from XGBoost or CatBoost, which are far lighter dependencies. Forcing every installation to pull in TensorFlow just to unlock one optional model family would make the platform far heavier to set up for the common case. The KERAS_AVAILABLE flag pattern — try the import, register the family only if it succeeds — is the same approach used for XGBoost, LightGBM, CatBoost, and the entire fine-tuning stack: install what you need, the rest degrades gracefully.`,
+    ref: 'training/keras_families.py, backend/requirements.txt (optional extras section)' },
+
+  { cat: 'libs', q: 'What is mixed-precision training, and why does it matter for fine-tuning large models?',
+    a: `Neural network weights are normally stored and computed in 32-bit floating point (fp32) for numerical stability, but most of that precision turns out to be unnecessary for most operations. Mixed-precision training runs the bulk of computation in 16-bit format (fp16 or bf16) — roughly halving memory use and often substantially speeding up training on GPUs with hardware support for it — while keeping a small number of precision-sensitive operations in fp32 to avoid the numerical instability pure fp16 training can cause. This is part of why LoRA fine-tuning (training a small adapter, not the full model) combined with mixed precision makes fine-tuning feasible on hardware that couldn't handle a full fp32 fine-tune of the same base model.`,
+    ref: 'fine_tuning/trainer.py, fine_tuning/dpo_trainer.py (LoRA + mixed precision)' },
+
+  { cat: 'libs', q: 'Why does Crucible\'s AutoML lean on scikit-learn-family models for tabular data instead of deep learning?',
+    a: `Scikit-learn is built for classical ML algorithms (tree ensembles, linear models, SVMs) on tabular data, with a simple, consistent fit()/predict() interface and no GPU or autograd machinery needed. For tabular data specifically — which is what Crucible's AutoML is built around — gradient-boosted trees (XGBoost, LightGBM, CatBoost) consistently match or beat deep learning approaches while training in seconds instead of minutes and needing no GPU at all. The Keras MLP family exists as one additional option Optuna can try, not the default approach — deep learning's real advantage shows up on unstructured data (images, text, audio), which is a different problem than the structured AutoML this platform focuses on.`,
+    ref: 'training/model_families.py, training/gbm_families.py, training/keras_families.py' },
+
+  // ── ARCHITECTURE ────────────────────────────────────────────────────────
+  { cat: 'arch', q: 'Why does every external provider get an abstract base class + factory, instead of just calling the SDK directly?',
+    a: `Storage, the LLM backend, the job queue, and experiment tracking all follow the identical pattern: one interface, one zero-infrastructure default, one production alternative, picked by a single config value. This isn't decoration — it means swapping from local storage to S3, or from Claude direct to AWS Bedrock, never requires touching the code that <em>uses</em> storage or the LLM, only the config. Calling an SDK directly everywhere would mean every one of those call sites needs to change if the provider ever changes.`,
+    ref: 'storage/base.py, llm/base.py, jobs/queue.py, tracking/base.py' },
+
+  { cat: 'arch', q: 'What does "BYOK" mean, and why build it instead of just using one shared API key?',
+    a: `Bring Your Own Key: each user can store their own Anthropic API key, encrypted at rest, which is then used in preference to a shared server-level key for every Claude call they trigger. Without it, every user's usage bills against one account, with no per-user cost attribution or rate-limit isolation — fine for a single-developer demo, a real liability the moment more than one person uses the platform, since one user's heavy usage affects everyone else's rate limit and bill.`,
+    ref: 'auth/key_manager.py' },
+
+  { cat: 'arch', q: 'Why is there a separate, bespoke job tracker AND a generic job queue — why not just one system?',
+    a: `AutoML training needs <em>live, granular</em> progress — which trial is running right now, the current best score — streamed to the browser over a WebSocket as it happens. The generic <code>JobQueueBackend</code> only exposes coarse states (queued/running/completed/failed). Forcing training onto the generic interface to "simplify the architecture" would have silently removed a real, tested, user-visible feature just to make the codebase look tidier on paper — a worse trade than having two purpose-built systems.`,
+    ref: 'jobs/manager.py vs jobs/queue.py' },
+
+  { cat: 'arch', q: 'What\'s the actual difference between the ReAct agent and the multi-agent (LangGraph) system?',
+    a: `The ReAct agent is one Claude instance reasoning and calling tools in a loop, all by itself. The multi-agent system splits the work: a supervisor (which calls Claude) decides <em>which specialist</em> should act next, and each specialist (Dataset Analyst, Model Trainer, Deployer) is a deterministic function with no LLM call of its own. The multi-agent version trades some flexibility for predictability and cost — the expensive, non-deterministic reasoning is isolated to one place, while the bulk of actual work is fast, free, and fully unit-testable without mocking an LLM at all.`,
+    ref: 'agents/runner.py vs agents/multi_agent.py' },
+
+  { cat: 'arch', q: 'Why cache profiling results by content hash instead of dataset ID?',
+    a: `If a dataset's underlying file ever changed while keeping the same database ID, caching by ID would silently serve stale results. Caching by SHA-256 content hash means the cache is keyed on the actual bytes — if the content changes, the hash changes, and the cache correctly misses. As a side benefit, two different dataset uploads with byte-for-byte identical content (e.g. a re-upload) automatically share one cache entry.`,
+    ref: 'caching/cache.py, routers/profiling.py' },
+
+  { cat: 'arch', q: 'What is a "model registry stage" (candidate / production / archived)?',
+    a: `Borrowed directly from MLflow's own Model Registry vocabulary (Crucible already integrates MLflow, so reusing its terms keeps the mental model consistent): every trained experiment defaults to <code>candidate</code>. The retraining pipeline — or a manual promotion call — can mark exactly one experiment per dataset/target as <code>production</code>; whatever was production before becomes <code>archived</code>. It's a simple three-state label, but it's what lets the platform answer "which model is actually live right now" instead of treating every training run as equally current.`,
+    ref: 'models/experiment.py lifecycle_stage, retraining/pipeline.py' },
+
+  { cat: 'arch', q: 'Why does the `.crucible` bundle wrap PEFT\'s standard adapter format instead of inventing something custom?',
+    a: `The <code>adapter/</code> folder inside a <code>.crucible</code> ZIP is exactly what <code>PeftModel.save_pretrained()</code> already produces — any system with <code>transformers</code> and <code>peft</code> installed can load it directly, with zero awareness that Crucible exists. Inventing a custom serialization format would have made the bundle Crucible-only; wrapping the existing standard with a manifest and a sample of training traces adds transparency and portability without sacrificing interoperability with the wider ecosystem.`,
+    ref: 'agents/bundle.py' },
+
+  { cat: 'arch', q: 'What is the "mock mode" pattern used throughout this codebase, and why does it matter beyond testing?',
+    a: `Every expensive or credentialed external dependency — SageMaker, the SFT/DPO trainers, BigQuery — has a documented, recognisable trigger (a <code>mock-</code> prefixed ID, an empty API key) that simulates realistic behaviour without the real thing. It's not only for the automated test suite: it's also how anyone evaluating this project can run the <em>entire</em> pipeline end-to-end on a machine with no AWS account, no GPU, and no paid API key — the difference between a project that's only demonstrable with significant setup and one that genuinely runs anywhere.`,
+    ref: 'cloud/sagemaker.py, fine_tuning/dpo_trainer.py, connectors/bigquery_connector.py' },
+
+  // ── ML THEORY — INTERVIEW STAPLES ──────────────────────────────────────────────
+  { cat: 'ml', q: 'What is the bias-variance tradeoff?',
+    a: `Bias is error from a model being too simple to capture the real pattern — it underfits, performing badly on both training and new data. Variance is error from a model being so flexible it fits noise in the training data specifically, performing great on training data and badly on anything new — it overfits. The tradeoff is real: reducing one usually increases the other, which is exactly why cross-validation, regularisation, and ensembling all exist — they're different strategies for finding the sweet spot rather than chasing training accuracy alone.`,
+    ref: 'training/runner.py (cross-validation + Optuna search)' },
+
+  { cat: 'ml', q: 'What\'s the difference between precision, recall, and F1 — and how do you choose which to optimise for?',
+    a: `Precision answers "of everything I flagged as positive, how much was actually positive" — high precision means few false alarms. Recall answers "of everything that was actually positive, how much did I catch" — high recall means few misses. They trade off against each other as you move the decision threshold. The choice depends entirely on which mistake is more expensive: a spam filter favours precision (a real email wrongly blocked is worse than one spam message slipping through), a cancer screening test favours recall (a missed diagnosis is far worse than a false alarm that gets ruled out later). F1 is their harmonic mean, useful when you genuinely need to balance both rather than prioritising one.`,
+    ref: 'training/runner.py (holdout_metrics)' },
+
+  { cat: 'ml', q: 'What\'s the difference between L1 and L2 regularisation?',
+    a: `Both add a penalty term to the loss function that discourages large coefficients, to fight overfitting. L2 (Ridge) penalises the sum of squared coefficients, which shrinks all of them smoothly toward zero but rarely to exactly zero. L1 (Lasso) penalises the sum of absolute values, which can push some coefficients to exactly zero — effectively performing feature selection as a side effect of regularisation. The practical rule of thumb: L2 when you believe most features matter somewhat and want stability; L1 when you suspect many features are irrelevant and want the model to discover that automatically.`,
+    ref: 'training/model_families.py (Ridge regression family)' },
+
+  { cat: 'ml', q: 'How do you handle class imbalance in a classification problem?',
+    a: `First, check whether accuracy is even the right metric — on a 99:1 imbalanced dataset, a model that always predicts the majority class scores 99% accuracy while being useless; precision/recall/F1 or AUC-PR are usually more honest. Beyond metric choice: class weighting (penalise mistakes on the minority class more heavily during training), resampling (oversample the minority class or undersample the majority), or synthetic oversampling (SMOTE-style techniques that generate plausible synthetic minority examples rather than just duplicating real ones). Threshold tuning after training — moving the decision boundary instead of retraining — is often the cheapest fix worth trying first.`,
+    ref: 'profiling/distributions.py (class imbalance detection)' },
+
+  { cat: 'ml', q: 'Why split data into train, validation, AND test sets — why not just train and test?',
+    a: `If you tune hyperparameters by repeatedly checking performance against your only held-out set, you're indirectly fitting to that set through your own selection process — the reported performance becomes optimistic, because the search process has effectively "seen" it. The validation set (or cross-validation folds, used during the search) is where that tuning happens; the test set is touched exactly once, at the very end, specifically so the final reported number reflects data the entire process — not just the model, but your hyperparameter choices too — never influenced in any way.`,
+    ref: 'training/runner.py (holdout split kept separate from CV)' },
+
+  // ── MATH & STATISTICS ───────────────────────────────────────────────────
+  { cat: 'math', q: 'What is a vector, and why does the term show up everywhere in ML?',
+    a: `A vector is just an ordered list of numbers — <code>[0.2, -1.4, 3.7]</code> — but in ML it's the universal representation for "a thing, described numerically." A row of features is a vector. A word or a document, after embedding, is a vector. A gradient (the direction to adjust a model's weights) is a vector. Once data becomes a vector, the entire toolbox of linear algebra — distances, angles, projections — becomes available to compare, search, and transform it.`,
+    ref: 'rag/embedder.py (documents → vectors), training/runner.py (feature rows)' },
+
+  { cat: 'math', q: 'What does matrix multiplication actually compute, in plain terms?',
+    a: `Each output value is a weighted sum: take one row from the first matrix, one column from the second, multiply corresponding entries, and add them up. The reason this matters for ML is that a trained linear model's prediction — <code>weights · features</code> — and a full layer of a neural network applying to a whole batch of inputs at once, are both literally one matrix multiplication. It's the operation that turns "many individual dot products" into one fast, GPU-friendly computation.`,
+    ref: 'training/model_families.py (linear/logistic models)' },
+
+  { cat: 'math', q: 'What is the dot product, and how does it become "cosine similarity" in RAG?',
+    a: `The dot product of two vectors multiplies their corresponding entries and sums the result — a single number that's large when the vectors point in a similar direction and roughly zero when they're unrelated. Cosine similarity is the dot product <em>normalised</em> by both vectors' lengths, so it measures only the angle between them, ignoring magnitude. This is exactly how RAG's dense retrieval finds relevant chunks: embed the question and every document chunk as vectors, then rank chunks by cosine similarity to the question — the closest "direction" in meaning-space wins.`,
+    ref: 'rag/retriever.py (dense vector search)' },
+
+  { cat: 'math', q: 'What is the "rank" of a matrix — and why is LoRA literally named after it?',
+    a: `Rank is the number of genuinely independent directions a matrix's rows or columns span — informally, how much real information it carries versus how much is redundant combinations of other rows. A full fine-tune updates a weight matrix with another matrix of the <em>same</em> size and (potentially) full rank. LoRA's insight is that the actual <em>change</em> needed during fine-tuning tends to be low-rank — well-approximated by multiplying two much smaller matrices together. That's the entire mechanism behind "Low-Rank Adaptation": train two small matrices instead of one huge one, because the useful update doesn't need full rank to express.`,
+    ref: 'fine_tuning/trainer.py, fine_tuning/dpo_trainer.py (LoraConfig rank parameter)' },
+
+  { cat: 'math', q: 'Why does Ridge regression need matrix inversion, and why does regularisation help when a matrix is "near-singular"?',
+    a: `Linear regression's closed-form solution involves inverting a matrix built from the feature data. When features are highly correlated (high VIF — see the ML Theory category), that matrix becomes "near-singular" — close to having no valid inverse at all — and the inversion becomes numerically unstable, producing wild, unreliable coefficients from tiny data changes. Ridge regression adds a small penalty term directly to that matrix before inverting it, which mathematically guarantees it stays invertible and well-behaved — this is precisely <em>why</em> Ridge handles multicollinear features so much better than plain linear regression.`,
+    ref: 'training/model_families.py (Ridge regression family)' },
+
+  { cat: 'math', q: 'What is an eigenvector, in plain terms — and where would it show up in ML?',
+    a: `Most vectors change both direction and length when you multiply them by a matrix. An eigenvector is special: multiplying it by the matrix only changes its <em>length</em>, never its direction — it's a "natural axis" of that transformation. The corresponding eigenvalue is how much it stretches. This is the mathematical engine behind PCA (Principal Component Analysis) and behind understanding which directions in feature space carry the most variance — concepts that sit just behind dimensionality reduction and behind why VIF and multicollinearity are even meaningful ideas.`,
+    ref: 'profiling/correlation.py (conceptually underlies VIF)' },
+
+  { cat: 'math', q: 'What is a sparse vector, and why does it matter for BM25 keyword search?',
+    a: `A sparse vector is mostly zeros — out of a vocabulary of 50,000 words, a single document might use a few hundred, so its "word count" representation is 99%+ zero. BM25 (the keyword half of Crucible's hybrid retrieval) works in exactly this kind of sparse space: each document is a sparse vector over the whole vocabulary, and a query matches well when it shares the rare, informative, non-zero terms. This is structurally different from dense embeddings (where every dimension is usually non-zero, and meaning is spread across all of them) — which is exactly why combining both catches what either one alone would miss.`,
+    ref: 'rag/retriever.py (BM25Okapi)' },
+
+  { cat: 'math', q: 'What does "high-dimensional" actually mean, and what is the curse of dimensionality?',
+    a: `A row with 200 features lives in 200-dimensional space — impossible to visualise, but mathematically just an extension of the 2D and 3D intuition you already have. The "curse" is that as dimensions increase, data points get sparse and roughly equidistant from each other extremely fast — distance-based methods (k-NN, clustering, some anomaly detectors) start to lose their meaning because "nearest neighbour" stops being a meaningfully different concept from "any random point." It's a real, practical reason high-cardinality categorical features and excessive one-hot encoding can quietly hurt distance-based algorithms.`,
+    ref: 'anomaly/algorithms.py (k-NN-adjacent methods like LOF)' },
+
+  { cat: 'math', q: 'What is normalisation/standardisation doing to a vector, geometrically?',
+    a: `Standardising a feature (subtract the mean, divide by the standard deviation) re-centres and re-scales it so every feature contributes on a comparable scale. Geometrically, without this step, a feature measured in the thousands (income) would dominate the distance calculation over a feature measured in single digits (age) purely because of its units — not because it's actually more informative. Any algorithm that relies on distance or dot products between feature vectors (k-NN, SVM, Isolation Forest's splits, cosine similarity) needs this, or it's effectively only listening to whichever feature happens to have the largest numbers.`,
+    ref: 'anomaly/algorithms.py (StandardScaler before Isolation Forest/LOF/OC-SVM)' },
+
+  { cat: 'math', q: 'What is a p-value, and what does "statistically significant" actually mean?',
+    a: `A p-value answers a narrow question: <em>if there were truly no real difference</em>, how surprising would data this extreme be? A small p-value (conventionally below 0.05) means "very surprising under the assumption of no difference" — which is treated as evidence the assumption is probably wrong. It does <em>not</em> mean "95% probability the effect is real," and it says nothing about how <em>large</em> or practically important the effect is — a tiny, meaningless difference can still be statistically significant with enough data.`,
+    ref: 'ab_testing/engine.py (McNemar\'s test, Wilcoxon signed-rank)' },
+
+  { cat: 'math', q: 'What is statistical power, and why does the A/B testing module compute it?',
+    a: `Power is the probability your test actually detects a real effect, given that one truly exists — low power means a "no significant difference" result is genuinely uninformative, because the test was never likely to find the difference even if it existed. Crucible's A/B testing power analysis answers the planning question in reverse: given the effect size you care about catching, how many samples does the comparison need before you can trust a negative result at all? Running an underpowered comparison and treating "not significant" as "the two models are equally good" is one of the most common statistical mistakes in practice.`,
+    ref: 'ab_testing/engine.py (power analysis via binary search for MDE)' },
+
+  { cat: 'math', q: 'What is a confidence interval, and how is it different from a single point estimate?',
+    a: `A point estimate ("accuracy: 87%") gives no sense of how much that number might shift on a different sample of the same data. A confidence interval ("87% ± 3%, 95% confidence") expresses the uncertainty directly: if you repeated the same measurement process many times, about 95% of the resulting intervals would contain the true value. A holdout accuracy from a small dataset deserves a wide interval and should be trusted less than the same accuracy from a holdout ten times larger — the point estimate alone hides that difference completely.`,
+    ref: 'training/runner.py (holdout_metrics — interpreted with this caveat in mind)' },
+
+  { cat: 'math', q: 'What is skewness, and why does it matter for a regression target?',
+    a: `Skewness measures how lopsided a distribution is — a long tail stretching to one side. Many real-world regression targets (income, transaction amounts, time-to-event) are right-skewed: most values cluster low, with a long tail of large outliers. A model trained directly on a heavily skewed target tends to be dominated by fitting the tail, at the expense of accuracy on the dense, common range — which is often the opposite of what actually matters for the use case. This is exactly the kind of thing Crucible's profiling step flags before training even starts.`,
+    ref: 'profiling/distributions.py' },
+
+  { cat: 'math', q: 'What is the Kolmogorov-Smirnov (KS) test, used in drift detection?',
+    a: `The KS test compares two distributions by looking at the single largest gap between their cumulative distribution functions (the running "what fraction of values are below X" curve) — if that maximum gap is larger than chance would produce, the two samples likely come from genuinely different distributions. It needs no assumption that the data is normally distributed, which is exactly why it's a good general-purpose tool for asking "has this numeric feature's distribution shifted since training" without having to know the feature's shape in advance.`,
+    ref: 'drift/detector.py (alongside PSI for numeric features)' },
+
+  { cat: 'math', q: 'What is stationarity, and why does it matter for time-series forecasting?',
+    a: `A stationary time series has statistical properties — mean, variance, autocorrelation structure — that don't change over time; a non-stationary one has a trend, a changing variance, or seasonal structure that shifts the "rules" depending on which window of time you look at. Most classical forecasting methods (AutoARIMA being a direct example) are built on the assumption of stationarity, and the "I" in ARIMA literally stands for "Integrated" — differencing the series (subtracting each value from the previous one) until it becomes stationary enough for the underlying model to work correctly.`,
+    ref: 'training/time_series/families.py (AutoARIMA, Exponential Smoothing)' },
+
+  // ── DEPLOYMENT ──────────────────────────────────────────────────────────
+  { cat: 'deploy', q: 'What\'s the actual difference between the three deployment paths (Render, Cloud Run, ECS Fargate)?',
+    a: `All three run the exact same Docker image — only the orchestration layer differs. Render is the simplest: connect a repo, get a public URL in minutes, free tier included, but the container sleeps after 15 minutes idle (a real cold-start delay on the next request). Cloud Run scales to zero too, but with a much more generous always-free allowance and no forced sleep behaviour. ECS Fargate is the production-realistic path most companies actually use: no free tier, but real load balancing, auto-scaling, and rolling deploys with automatic rollback. The point of supporting all three with one image is that the deployment decision is infrastructure, not a code change.`,
+    ref: 'render.yaml, DEPLOYMENT.md, infra/ecs/' },
+
+  { cat: 'deploy', q: 'What does the one-click deployment generator actually produce?',
+    a: `A downloadable ZIP containing a self-contained FastAPI server exposing POST /predict, a Dockerfile, requirements.txt pinned to the exact dependency versions used during training (not whatever's latest today), an OpenAPI spec, and a Kubernetes Deployment manifest with health probes and resource limits already filled in. The serialized model (joblib) ships inside it. The goal is that someone can unzip it, run docker build, and have a working prediction API with no manual wiring.`,
+    ref: 'deployment/generator.py' },
+
+  { cat: 'deploy', q: 'What is a Kubernetes Deployment and Service, in plain terms?',
+    a: `A Deployment describes the desired state of your application — which container image, how many replicas, what resource limits — and Kubernetes continuously works to keep reality matching that description, restarting crashed pods and replacing unhealthy ones automatically. A Service gives that shifting set of pods one stable network address, since individual pods come and go (restarts, scaling, deploys) but something else needs a fixed place to send traffic. The Deployment manages the pods; the Service is the stable front door to them.`,
+    ref: 'deployment/generator.py (K8s manifest output)' },
+
+  { cat: 'deploy', q: 'What\'s the difference between a liveness probe and a readiness probe?',
+    a: `A liveness probe answers "is this process still alive, or should Kubernetes kill and restart it" — it should be cheap and fast, checking nothing beyond basic responsiveness. A readiness probe answers a different question: "is this instance ready to receive real traffic right now" — it can check dependencies like a database connection, and a pod that's alive but not ready gets removed from load-balancing without being restarted. Crucible's health router exposes both separately for exactly this reason: /health/live never touches the database, /health/ready does.`,
+    ref: 'routers/health.py' },
+
+  { cat: 'deploy', q: 'What does "scale to zero" mean, and what\'s the trade-off?',
+    a: `A scale-to-zero platform (Cloud Run, Render's free tier) shuts your container down completely when nothing is using it, so you pay nothing during idle time — genuinely free for a low-traffic portfolio demo. The trade-off is the cold start: the very next request after idle time has to wait for a fresh container to boot before it gets answered, often 10-50 seconds. For a live interview demo, that delay can be a real problem if you haven't warmed it up beforehand.`,
+    ref: 'DEPLOYMENT.md (Render and Cloud Run sections)' },
+
+  { cat: 'deploy', q: 'What is a circuit breaker rollback in a deployment, and why does the ECS service definition have one?',
+    a: `During a rolling deploy, new tasks gradually replace old ones. A circuit breaker watches the new tasks' health checks during that rollout, and if they're failing, it automatically halts the deployment and rolls back to the last known-good version — without a human needing to notice and intervene. Without it, a bad deploy could fully replace a healthy service with a broken one before anyone realizes something's wrong.`,
+    ref: 'infra/ecs/service-definition.json (deploymentCircuitBreaker)' },
+
+  { cat: 'deploy', q: 'What does an Application Load Balancer actually do?',
+    a: `It sits in front of multiple running copies of your application and routes each incoming request to one of them, typically the least-busy or next-in-rotation instance, while continuously health-checking each target and pulling unhealthy ones out of rotation automatically. This is what makes horizontal scaling (running more copies instead of one bigger one) actually usable from the outside — clients only ever see one stable address, never which specific instance answered.`,
+    ref: 'infra/ecs/service-definition.json (loadBalancers)' },
+
+  { cat: 'deploy', q: 'Why export a trained model to ONNX specifically for deployment?',
+    a: `ONNX (Open Neural Network Exchange) is a standardized model format that a dedicated, highly optimized runtime can execute without needing the full original training framework (scikit-learn, XGBoost) installed. Converting a trained pipeline to ONNX before deploying it typically gives 3 to 10 times faster CPU inference, because the ONNX runtime is built specifically for fast execution, not for the flexibility training needs. Crucible validates the converted model's predictions match the original before handing it back, so the speed gain never comes at the cost of silently different answers.`,
+    ref: 'deployment/onnx_exporter.py' },
+
+  { cat: 'deploy', q: 'What are resource requests and limits in a Kubernetes manifest, and why do they matter?',
+    a: `A request is what the scheduler reserves for your pod when deciding which node to place it on; a limit is the hard ceiling the pod is never allowed to exceed. Without limits, one runaway process can starve every other pod sharing that node of CPU or memory. Without requests, the scheduler has no idea how much capacity to reserve and can over-pack a node until everything on it suffers. Crucible's generated manifests fill in sane defaults for both, rather than leaving a downloaded deployment package to discover this the hard way in production.`,
+    ref: 'deployment/generator.py (K8s manifest resource limits)' },
+
+  { cat: 'deploy', q: 'Why does the ECS deploy workflow require a manual trigger instead of deploying automatically on every push?',
+    a: `The regular CI workflow (test, lint, build, push to GHCR) runs automatically on every push, because those are safe, reversible actions. Actually deploying to production infrastructure that can take a live service down is treated differently on purpose: workflow_dispatch means a human has to go to the Actions tab and explicitly choose to run it, selecting an environment. Continuous deployment is the right choice for some teams; for infrastructure that can fail loudly in front of real traffic, a deliberate human action is the safer default.`,
+    ref: '.github/workflows/deploy-ecs.yml' },
+
+  { cat: 'deploy', q: 'What is GHCR, and why push the Docker image there instead of Docker Hub?',
+    a: `GHCR (GitHub Container Registry) is GitHub's own Docker registry, integrated directly with GitHub Actions and GitHub's permissions model — no separate account or credentials needed, since the workflow already runs inside GitHub with its own scoped GITHUB_TOKEN. Docker Hub works too, but would mean managing a second set of credentials and a separate place for image visibility/permissions to live, for no real benefit when the whole CI/CD pipeline already lives in GitHub.`,
+    ref: '.github/workflows/deploy.yml' },
+
+  // ── INTERVIEW PREP ──────────────────────────────────────────────
+  { cat: 'interview', q: 'Give me the 60-second pitch for this project.',
+    a: `Crucible is an ML platform covering the full lifecycle: ingest data from anywhere, profile it for leakage and quality issues before training, run AutoML across nine model families with Optuna, explain results with SHAP, and deploy. What makes it more than a training exercise is the operational layer most portfolio projects skip — a scheduled pipeline that detects data drift and automatically retrains and promotes a better model, BYOK so users control their own API spend, and an agent training pipeline that captures real usage and fine-tunes a smaller model from it. It has 1,024 automated tests, real-server integration tests (not just an in-process test client), and three documented deployment paths from free-tier to production AWS.`,
+    ref: 'README.md — full feature summary' },
+
+  { cat: 'interview', q: 'Tell me about a challenging bug you found and fixed.',
+    a: `Cursor-based pagination kept returning the exact same page no matter what cursor was passed in. Tracing it down to the actual SQL revealed the cause: SQLite stores timestamps as plain TEXT at second resolution, but SQLAlchemy's bind-parameter formatting for a Python datetime includes microseconds — comparing the two directly in a WHERE clause was comparing "...16:30:00" against "...16:30:00.000000" as strings, which never matched. The fix detects the SQLite dialect specifically and normalises both sides with strftime() before comparing; PostgreSQL needs no such workaround since it stores genuine microsecond precision that round-trips exactly. The interesting part wasn't the fix — it's that this bug had been latent in the codebase the whole time, invisible because no prior endpoint had ever done a WHERE comparison on that column, only ORDER BY, which works fine on TEXT columns regardless of precision.`,
+    ref: 'schemas/cursor_pagination.py' },
+
+  { cat: 'interview', q: 'Tell me about a time you found a problem with your own earlier work.',
+    a: `Three packages — python-jose, bcrypt, slowapi — were imported unconditionally in production auth and rate-limiting code, but never appeared in requirements.txt. It worked invisibly the whole build because the development sandbox already had them installed from earlier ad-hoc pip installs. I found this by writing a short AST script that walks every backend file, collects every top-level import name, and diffs that against what requirements.txt actually declares — rather than waiting to discover it the hard way on a clean machine. slowapi specifically was the worst of the three: it's imported at the very top of main.py, so a clean install would crash on the first uvicorn startup, before the app object even exists.`,
+    ref: 'backend/requirements.txt' },
+
+  { cat: 'interview', q: 'How would you design an ML platform from scratch — what are the core layers?',
+    a: `I'd describe it as five layers that should be loosely coupled: ingestion (a common contract every data source implements, so training never cares whether data came from a CSV or BigQuery), profiling (catch leakage and quality issues before they waste a training run, not after), training and explainability (the actual modelling, plus SHAP so predictions aren't a black box), deployment (a standardised packaging step — Docker, health checks, a stable inference endpoint), and the layer most designs skip: monitoring and automated response, because a model that's correct on day one and silently wrong by month three is the actual failure mode that matters in production. I built that fifth layer as a scheduled drift-check-then-retrain-then-promote pipeline.`,
+    ref: 'docs/DOCUMENTATION.md §2 — The Big Picture' },
+
+  { cat: 'interview', q: 'How do you handle model staleness or drift in a production ML system?',
+    a: `Detection first: compare the current data's distribution against the training baseline using PSI and KS tests for numeric features, chi-squared for categorical — each gets a severity rating, not just a binary alarm. Then a policy-driven response: if drift crosses a configured severity threshold, automatically retrain on the current data; if the new model beats the existing production model by a configured margin, promote it and archive the old one, updating the drift baseline to the new model's training data so the next check compares against what's actually live now, not a stale reference. The key design point is that retraining is gated on detected drift, not run blindly on a calendar — and promotion is gated on the new model actually being better, not just newer.`,
+    ref: 'retraining/pipeline.py' },
+
+  { cat: 'interview', q: 'How would you reduce LLM API costs at scale?',
+    a: `Four things, in the order I'd actually apply them: pick the cheapest model that meets the quality bar for each specific task (Haiku for agent tool-routing decisions, reserving a larger model only where reasoning quality genuinely matters); let users bring their own API key so cost and rate limits are attributed per-user instead of one shared account absorbing everyone's usage; build a genuine mock mode for every expensive call so development and CI never burn real API budget; and cache anything deterministic and repeatable, like profiling results keyed on content hash, so the same question asked twice doesn't trigger the same expensive computation twice.`,
+    ref: 'auth/key_manager.py, caching/cache.py' },
+
+  { cat: 'interview', q: 'What\'s the biggest limitation of what you built, and what would you do next?',
+    a: `Honestly: it runs on SQLite with a single worker process, which is the right choice for a portfolio-scale demo but is a real ceiling — concurrent writes, the retraining scheduler, and the in-memory job queue all assume one process. Moving to PostgreSQL plus a distributed lock for the scheduler would be the first production-readiness change. Second: the agent benchmark currently measures a Claude-backed agent as the baseline, not a genuinely loaded, locally-running fine-tuned model, because that needs real GPU infrastructure this environment doesn't have — the pipeline to get there (trace capture, DPO conversion, LoRA training, .crucible export) is fully built and tested, but I haven't closed that last loop end-to-end with a real local inference backend yet.`,
+    ref: 'retraining/scheduler.py, agents/benchmark.py' },
+
+  { cat: 'interview', q: 'Why build your own provider abstractions instead of just calling each SDK directly?',
+    a: `Because provider choice is an organisational decision a platform shouldn't make on someone else's behalf. A team that already has Postgres-backed MLflow running shouldn't be forced onto Weights & Biases just because that's what the code happens to call directly, and a team with an existing AWS Bedrock contract shouldn't have to route everything through a direct Anthropic key. I applied the same abstraction shape four times — storage, LLM backend, job queue, tracking — specifically so swapping a provider is a one-line config change, not a rewrite of every call site that touches it.`,
+    ref: 'storage/base.py, llm/base.py, jobs/queue.py, tracking/base.py' },
+
+  { cat: 'interview', q: 'How do you decide what to unit test versus integration test?',
+    a: `Unit/in-process tests (FastAPI's TestClient, in this project) for business logic — they're fast, so you can have a thousand of them and still run the suite in under three minutes. Real-server integration tests are reserved for the specific things an in-process client structurally cannot catch: I found that slowapi's rate limiter reads the real client IP from the ASGI connection, which TestClient always fakes as the literal string "testclient" — a rate-limiting bug that only shows up with genuinely different client IPs would be invisible no matter how many in-process tests you wrote. The rule I used: if the bug class depends on something only a real socket provides — real multipart encoding, a real WebSocket handshake, real connection metadata — it goes in the small, slower, separate integration suite.`,
+    ref: 'tests/test_integration_real_server.py' },
+
+  { cat: 'interview', q: 'What\'s a trade-off you made that you\'re not fully happy with?',
+    a: `The Experiment table's tracking-run field is still called mlflow_run_id even after I built a provider-agnostic tracking abstraction supporting both MLflow and Weights & Biases — it now holds whichever provider's run ID was returned, not necessarily MLflow's. Renaming it properly would mean a database migration, a schema change, and touching every place the frontend displays it, for a purely cosmetic improvement. I documented the decision directly in the code rather than silently leaving it confusing, but it's a real, acknowledged compromise between correctness-of-naming and not expanding scope for its own sake.`,
+    ref: 'training/runner.py (mlflow_run_id field, documented inline)' },
+
+  { cat: 'interview', q: 'If this had real users tomorrow, what\'s the first thing you\'d fix?',
+    a: `Move off SQLite to PostgreSQL — it's the single assumption that constrains the most other things at once: single-worker-process, the in-memory job queue's lack of restart-survival, and the retraining scheduler's single-process requirement would all either go away or become much easier to solve properly with a real multi-writer database underneath. Almost everything else in the platform was built provider-agnostic specifically so that kind of infrastructure swap doesn't ripple through the rest of the codebase.`,
+    ref: '.env.example (DATABASE_URL — already supports Postgres via asyncpg)' },
+
+  { cat: 'interview', q: 'Walk me through how you\'d explain this system\'s reliability to a non-technical interviewer.',
+    a: `Every change goes through 1,024 automated checks before it's considered done, plus a separate set of tests that actually start a real server and talk to it over the network the way a real user would, specifically because some bugs only show up that way. Nothing expensive or requiring special access — cloud training jobs, paid AI calls — has to be tested against the real thing; every one of them has a documented way to simulate realistic behaviour, which is also what makes the whole platform runnable by someone with no AWS account or GPU. And when something does go wrong in production, every request gets a unique ID that shows up in every log line it touches, so tracing a specific failure back to its cause doesn't mean guessing from timestamps.`,
+    ref: 'main.py (RequestIDMiddleware), docs/DOCUMENTATION.md §12' },
+];
+
+// ════════════════════════════════════════════════════════════════════════
+// APPLICATION LOGIC
+// ════════════════════════════════════════════════════════════════════════
+
+let activeCategory = 'python';
+let searchTerm = '';
+let chatHistory = [];
+
+function counts() {
+  const c = {};
+  CATEGORIES.forEach(cat => { c[cat.id] = QA.filter(item => item.cat === cat.id).length; });
+  return c;
+}
+
+function renderSidebar() {
+  const c = counts();
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = CATEGORIES.map(cat => `
+    <div class="nav-item ${activeCategory === cat.id ? 'active' : ''}" data-cat="${cat.id}">
+      <span>${cat.label}</span>
+      ${cat.special ? '' : `<span class="count">${c[cat.id]}</span>`}
+    </div>
+  `).join('');
+
+  sidebar.querySelectorAll('.nav-item').forEach(el => {
+    el.addEventListener('click', () => {
+      activeCategory = el.dataset.cat;
+      searchTerm = '';
+      document.getElementById('search').value = '';
+      renderSidebar();
+      renderMain();
+    });
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function highlightMatch(text, term) {
+  if (!term) return text;
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(`(${escaped})`, 'ig'), '<mark style="background:rgba(255,122,61,0.3);color:inherit;border-radius:2px;">$1</mark>');
+}
+
+function renderMain() {
+  const main = document.getElementById('main');
+  const cat = CATEGORIES.find(c => c.id === activeCategory);
+
+  if (cat.special) {
+    renderChatPanel(main);
+    return;
+  }
+
+  let items = QA.filter(item => item.cat === activeCategory);
+  if (searchTerm) {
+    const term = searchTerm.toLowerCase();
+    items = QA.filter(item =>
+      item.q.toLowerCase().includes(term) || item.a.toLowerCase().includes(term)
+    );
+  }
+
+  const heading = searchTerm
+    ? `Search results for "${escapeHtml(searchTerm)}"`
+    : cat.label;
+  const sub = searchTerm
+    ? `${items.length} match${items.length === 1 ? '' : 'es'} across all categories`
+    : categorySubtitle(cat.id);
+
+  main.innerHTML = `
+    <h2 class="section-intro">${heading}</h2>
+    <p class="section-sub">${sub}</p>
+    <div id="qa-list"></div>
+  `;
+
+  const list = document.getElementById('qa-list');
+  if (items.length === 0) {
+    list.innerHTML = '<div class="no-results">No matches. Try a different search term, or ask it directly in "Ask Anything."</div>';
+    return;
+  }
+
+  list.innerHTML = items.map((item, i) => `
+    <div class="qa-item" data-idx="${i}">
+      <div class="qa-q">
+        <span class="chevron">›</span>
+        <span>${searchTerm ? highlightMatch(item.q, searchTerm) : item.q}</span>
+      </div>
+      <div class="qa-a">
+        ${item.a}
+        <div class="file-ref">↳ ${item.ref}</div>
+      </div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.qa-item').forEach(el => {
+    el.querySelector('.qa-q').addEventListener('click', () => {
+      el.classList.toggle('open');
+    });
+  });
+}
+
+function categorySubtitle(catId) {
+  const subs = {
+    python: 'Language features this codebase relies on, explained against real call sites — not abstract syntax examples.',
+    docker: 'Containerisation and CI/CD concepts, tied to the actual Dockerfile and GitHub Actions workflows in this repo.',
+    ml: 'The machine learning theory behind every algorithm and technique Crucible actually uses, in plain language.',
+    math: 'The linear algebra and statistics underneath the ML — what a vector, a rank, a p-value, or a KS test actually means, tied to where each one shows up in this codebase.',
+    deploy: 'Getting a trained model — or the whole platform — actually running somewhere real: containers, Kubernetes, load balancers, and the three deployment paths this project actually documents.',
+    libs: 'What each major library does, and why it was chosen over the obvious alternatives.',
+    arch: "Crucible-specific architecture decisions — the recurring patterns, and the reasoning behind each one.",
+    interview: 'Real moments from building this project — actual bugs, actual trade-offs, actual design reasoning — packaged as direct, ready answers for the questions interviewers actually ask.',
+  };
+  return subs[catId] || '';
+}
+
+document.getElementById('search').addEventListener('input', (e) => {
+  searchTerm = e.target.value.trim();
+  renderMain();
+});
+
+// ── Ask Anything — live chat wired to Claude ──────────────────────────────
+
+const SUGGESTIONS = [
+  'Why does Crucible use SHAP instead of just feature_importances_?',
+  'Explain async/await like I\'ve never seen it before.',
+  'What would break if I removed the multi-stage Docker build?',
+  'How is DPO different from regular fine-tuning?',
+];
+
+function renderChatPanel(main) {
+  main.innerHTML = `
+    <h2 class="section-intro">Ask Anything</h2>
+    <p class="section-sub">Beyond the curated reference — ask about Python, Docker, ML theory, or anything else in this codebase. Answered live by Claude.</p>
+    <div class="suggestion-chips" id="chips"></div>
+    <div id="chat-error-slot"></div>
+    <div class="chat-panel">
+      <div class="chat-log" id="chat-log">
+        <div class="chat-empty">No messages yet. Ask a question, or pick a suggestion above.</div>
+      </div>
+      <div class="chat-input-row">
+        <textarea id="chat-input" rows="1" placeholder="Ask about Python, Docker, ML, this codebase…"></textarea>
+        <button id="chat-send">Ask</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('chips').innerHTML = SUGGESTIONS.map(s =>
+    `<div class="chip" data-q="${escapeHtml(s)}">${s}</div>`
+  ).join('');
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.getElementById('chat-input').value = chip.dataset.q;
+      sendChat();
+    });
+  });
+
+  renderChatLog();
+
+  document.getElementById('chat-send').addEventListener('click', sendChat);
+  document.getElementById('chat-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendChat();
+    }
+  });
+}
+
+function renderChatLog() {
+  const log = document.getElementById('chat-log');
+  if (!log) return;
+  if (chatHistory.length === 0) {
+    log.innerHTML = '<div class="chat-empty">No messages yet. Ask a question, or pick a suggestion above.</div>';
+    return;
+  }
+  log.innerHTML = chatHistory.map(msg => `
+    <div class="msg ${msg.role}">
+      <div class="msg-avatar">${msg.role === 'user' ? 'Y' : 'C'}</div>
+      <div class="msg-bubble">${msg.pending ? '<span class="typing-dots"><span></span><span></span><span></span></span>' : escapeHtml(msg.content)}</div>
+    </div>
+  `).join('');
+  log.scrollTop = log.scrollHeight;
+}
+
+const SYSTEM_PROMPT = `You are answering questions inside Crucible's interactive theory & reference page. Crucible is an ML experimentation platform with: AutoML training (9 model families, Optuna+Hyperband, probability calibration), SHAP explainability, fairness metrics, drift/anomaly detection, a RAG pipeline, ReAct and LangGraph multi-agent systems, an agent training pipeline (capture traces → SFT/DPO → .crucible bundles), LoRA/DPO fine-tuning, a scheduled retraining pipeline (drift → retrain → promote), SageMaker/Bedrock/multi-cloud integration, and MLflow/W&B tracking. It's built with FastAPI, async SQLAlchemy, React, and Docker.
+
+Answer questions about Python, Docker, machine learning theory, or this project's specific architecture clearly and concisely, the way a patient senior engineer would explain it to someone learning. Prefer plain language over jargon; when you must use a technical term, briefly define it. Keep answers focused — a few sentences to a short paragraph, not an essay, unless the question genuinely needs more. If asked something with no connection to Python/Docker/ML/this project, answer it anyway, just keep the same clear, concise style.`;
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const question = input.value.trim();
+  if (!question) return;
+
+  document.getElementById('chat-error-slot').innerHTML = '';
+  input.value = '';
+  chatHistory.push({ role: 'user', content: question });
+  chatHistory.push({ role: 'assistant', content: '', pending: true });
+  renderChatLog();
+
+  const sendBtn = document.getElementById('chat-send');
+  sendBtn.disabled = true;
+
+  try {
+    const apiMessages = chatHistory
+      .filter(m => !m.pending)
+      .map(m => ({ role: m.role, content: m.content }));
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: apiMessages,
+      }),
+    });
+
+    const data = await response.json();
+    const text = (data.content || [])
+      .map(block => block.type === 'text' ? block.text : '')
+      .filter(Boolean)
+      .join('\n');
+
+    chatHistory[chatHistory.length - 1] = {
+      role: 'assistant',
+      content: text || 'No response received — try rephrasing the question.',
+    };
+  } catch (err) {
+    chatHistory.pop();
+    document.getElementById('chat-error-slot').innerHTML =
+      `<div class="chat-error">Couldn't reach Claude right now. ${escapeHtml(String(err && err.message || err))}</div>`;
+  }
+
+  sendBtn.disabled = false;
+  renderChatLog();
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────
+renderSidebar();
+renderMain();
+
+</script>
+</body>
+</html>

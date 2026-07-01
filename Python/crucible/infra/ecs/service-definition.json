@@ -1,0 +1,32 @@
+{
+  "serviceName": "crucible-backend-service",
+  "cluster": "crucible-cluster",
+  "taskDefinition": "crucible-backend",
+  "desiredCount": 2,
+  "launchType": "FARGATE",
+  "platformVersion": "LATEST",
+  "deploymentConfiguration": {
+    "maximumPercent": 200,
+    "minimumHealthyPercent": 100,
+    "deploymentCircuitBreaker": {
+      "enable": true,
+      "rollback": true
+    }
+  },
+  "networkConfiguration": {
+    "awsvpcConfiguration": {
+      "subnets": ["SUBNET_ID_1", "SUBNET_ID_2"],
+      "securityGroups": ["SECURITY_GROUP_ID"],
+      "assignPublicIp": "DISABLED"
+    }
+  },
+  "loadBalancers": [
+    {
+      "targetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:ACCOUNT_ID:targetgroup/crucible-tg/XXXX",
+      "containerName": "crucible-backend",
+      "containerPort": 8000
+    }
+  ],
+  "healthCheckGracePeriodSeconds": 60,
+  "schedulingStrategy": "REPLICA"
+}

@@ -1,0 +1,44 @@
+# ── Secrets — never commit these ──────────────────────────────────────────
+.env
+*.key
+*.pem
+*.p12
+
+# ── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# ── Data & models (generated at runtime) ──────────────────────────────────
+backend/data/
+data/
+*.db
+*.joblib
+*.zip
+
+# ── Node / frontend ────────────────────────────────────────────────────────
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ── IDE ────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# ── MLflow ─────────────────────────────────────────────────────────────────
+mlruns/
+mlflow.db

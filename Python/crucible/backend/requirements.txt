@@ -1,0 +1,109 @@
+# ── Web framework ──────────────────────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+pydantic-settings==2.5.2
+python-multipart==0.0.12
+
+# ── Database ───────────────────────────────────────────────────────────────
+sqlalchemy==2.0.35
+asyncpg==0.29.0          # Postgres async driver
+aiosqlite==0.20.0        # SQLite async driver
+alembic>=1.13.0          # Schema migrations
+
+# ── Connectors ─────────────────────────────────────────────────────────────
+pandas==2.2.3
+pyarrow==17.0.0          # Parquet read/write
+httpx==0.27.2            # Async HTTP for REST connectors
+authlib==1.3.2           # OAuth2 helpers
+
+# ── ML / AutoML (Phase 2) ──────────────────────────────────────────────────
+scikit-learn==1.5.2
+numpy==2.1.1
+scipy==1.14.1
+optuna==4.1.0            # Hyperparameter search
+shap==0.46.0             # Model explainability
+joblib==1.4.2            # Model serialisation
+xgboost>=2.0.0           # Gradient boosting (fast C++ implementation)
+lightgbm>=4.0.0          # Gradient boosting (GOSS + EFB, often fastest)
+
+# ── Experiment tracking (Phase 2) ─────────────────────────────────────────
+mlflow==2.16.2
+
+# ── Phase 3 ───────────────────────────────────────────────────────────────
+networkx==3.4.2          # Lineage DAG
+anthropic==0.40.0        # Claude advisor API (optional — set ANTHROPIC_API_KEY)
+cryptography==43.0.3     # Fernet encryption for sensitive fields at rest
+
+# ── Utilities ─────────────────────────────────────────────────────────────
+python-dotenv==1.0.1
+structlog==24.4.0
+pyyaml
+boto3
+catboost
+arq
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-fastapi
+opentelemetry-exporter-otlp-proto-http
+requests
+websockets<16,>=14
+apscheduler
+wandb
+
+# ── Auth (REQUIRED — auth/jwt.py and auth/passwords.py import these
+#    unconditionally at module load; missing them breaks JWT auth entirely) ──
+python-jose==3.5.0
+bcrypt==5.0.0
+
+# ── Email validation (REQUIRED — routers/auth.py uses Pydantic's EmailStr
+#    field type, which lazily imports email_validator only when a model
+#    using it is actually constructed. This is invisible to a static import
+#    scan of Crucible's own code, since Crucible never imports it directly —
+#    pydantic/networks.py does, internally, only when EmailStr is used.) ──
+email-validator==2.3.0
+
+# ── Rate limiting (REQUIRED — main.py imports this at module top level;
+#    missing it crashes the whole app on startup, not just rate limiting) ──
+slowapi==0.1.10
+
+# ── Optional extras — each is a LOCAL import inside its module, guarded by
+#    a try/except ImportError availability flag (e.g. XGBOOST_AVAILABLE).
+#    The app boots and the rest of the platform works without any of these;
+#    only the specific feature listed returns a clear "X is required" error
+#    or runs in mock mode until installed. Install only what you need.
+
+# Multi-agent supervisor/specialist orchestration (agents/multi_agent.py)
+# langgraph
+
+# RAG pipeline — chunking, embeddings, hybrid retrieval (rag/*.py)
+# chromadb
+# fastembed
+# rank-bm25
+# pdfplumber
+
+# Fine-tuning studio — LoRA/QLoRA SFT + DPO (fine_tuning/*.py)
+# Deep learning — required for NLI hallucination scoring
+# (cross-encoder/nli-deberta-v3-small, ~185 MB, downloads on first use)
+torch
+transformers
+# peft
+# trl
+
+# Keras MLP model family + LSTM-based forecasting (training/keras_families.py,
+# training/time_series/families.py)
+# tensorflow
+# scikeras
+
+# Classical time series forecasting (training/time_series/families.py)
+# prophet
+# pmdarima
+
+# ONNX model export (deployment/onnx_exporter.py)
+# skl2onnx
+# onnxmltools
+# onnxruntime
+
+# BigQuery connector (connectors/bigquery_connector.py)
+google-cloud-bigquery==3.27.0
+db-dtypes==1.3.1          # required by BigQuery's .to_dataframe() for date/time types

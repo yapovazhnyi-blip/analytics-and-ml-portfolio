@@ -1,0 +1,113 @@
+version: "3.9"
+
+# Crucible local development stack.
+# Usage: docker compose up --build
+
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runtime
+    image: crucible-backend:local
+    container_name: crucible-backend
+    restart: unless-stopped
+    # Migrations run as a discrete step in their own process BEFORE uvicorn.
+    # A fresh process has no running event loop, so Alembic's asyncio bridge
+    # works exactly as it does from a terminal. If migration fails, the &&
+    # short-circuits and uvicorn never starts — a broken schema surfaces
+    # loudly at the top of the logs instead of being silently masked.
+    command: sh -c "python migrate.py && uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1 --timeout-keep-alive 65 --access-log"
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL:       "sqlite+aiosqlite:////app/data/crucible.db"
+      STORAGE_BACKEND:    "${STORAGE_BACKEND:-local}"
+      STORAGE_LOCAL_ROOT: "/app/data/storage"
+      DISABLE_AUTH:       "${DISABLE_AUTH:-false}"
+      SECRET_KEY:         "${SECRET_KEY:-change-me-in-docker-dev}"
+      ANTHROPIC_API_KEY:  "${ANTHROPIC_API_KEY:-}"
+      AWS_BUCKET_NAME:    "${AWS_BUCKET_NAME:-}"
+      AWS_REGION:         "${AWS_REGION:-us-east-1}"
+      GOOGLE_APPLICATION_CREDENTIALS: "/app/gcp_adc.json"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./backend:/app:cached
+      - crucible-data:/app/data
+      - /c/Users/sp030/AppData/Roaming/gcloud/application_default_credentials.json:/app/gcp_adc.json:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    image: node:20-alpine
+    container_name: crucible-frontend
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app:cached
+      - /app/node_modules
+    environment:
+      VITE_API_URL: "http://localhost:8000/api/v1"
+      VITE_API_PROXY_TARGET: "http://backend:8000"
+    depends_on:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    container_name: crucible-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runtime
+    image: crucible-backend:local
+    container_name: crucible-worker
+    restart: unless-stopped
+    command: ["arq", "jobs.worker_settings.WorkerSettings"]
+    environment:
+      DATABASE_URL:       "sqlite+aiosqlite:////app/data/crucible.db"
+      JOB_QUEUE_BACKEND:  "arq"
+      REDIS_URL:          "redis://redis:6379"
+      STORAGE_BACKEND:    "${STORAGE_BACKEND:-local}"
+      STORAGE_LOCAL_ROOT: "/app/data/storage"
+    volumes:
+      - crucible-data:/app/data
+      - ./backend:/app:cached
+    depends_on:
+      - redis
+
+  mlflow:
+    image: python:3.11-slim
+    container_name: crucible-mlflow
+    restart: unless-stopped
+    command: >
+      sh -c "pip install mlflow --quiet &&
+             mlflow server
+               --host 0.0.0.0
+               --port 5000
+               --backend-store-uri /mlflow/mlruns
+               --default-artifact-root /mlflow/artifacts"
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow-data:/mlflow
+
+volumes:
+  crucible-data:
+  mlflow-data:
+  redis-data:

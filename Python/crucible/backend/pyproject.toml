@@ -1,0 +1,99 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "crucible-backend"
+version = "1.0.0"
+description = "Crucible ML experimentation platform — backend"
+requires-python = ">=3.11"
+
+
+# ── Ruff: linting and formatting ──────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["."]
+
+[tool.ruff.lint]
+# Rule sets:
+#   E/W   — pycodestyle errors and warnings
+#   F     — pyflakes (unused imports, undefined names)
+#   I     — isort (import ordering)
+#   UP    — pyupgrade (modernise Python syntax)
+#   B     — flake8-bugbear (likely bugs and design issues)
+#   C90   — mccabe complexity
+select = ["E", "W", "F", "I", "UP", "B", "C90"]
+
+ignore = [
+    "E501",   # line-too-long: handled by formatter
+    "B008",   # do-not-perform-function-call-in-default-argument: FastAPI's Depends()
+    "B904",   # raise-without-from-inside-except: we use plain raise in some places
+    "UP007",  # use X | Y for union types: requires Python 3.10+, we want 3.11 compat
+]
+
+# Files to skip entirely
+exclude = [
+    "alembic/versions/",   # auto-generated migration files
+    ".venv/",
+    "dist/",
+    "build/",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests can use assert statements and import * for fixtures
+"tests/*" = ["F401", "F811", "S101"]
+# Config files often have module-level code
+"config.py" = ["B006"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12   # default is 10; slightly relaxed for data science code
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+
+# ── Pytest ────────────────────────────────────────────────────────────────────
+# NOTE: pytest.ini (not this section) is the authoritative pytest config —
+# pytest.ini takes priority over [tool.pytest.ini_options] when both exist.
+# See pytest.ini for asyncio_mode, markers, addopts, and filterwarnings.
+# This section is kept for tomllib-based tooling that reads pyproject.toml
+# directly (see tests/test_ci.py), but pytest itself reads pytest.ini.
+[tool.pytest.ini_options]
+asyncio_mode = "auto"          # all async test functions are auto-detected
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+filterwarnings = [
+    "ignore::DeprecationWarning:passlib",
+    "ignore::DeprecationWarning:pkg_resources",
+    "ignore::PendingDeprecationWarning",
+]
+
+
+# ── Coverage ──────────────────────────────────────────────────────────────────
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "alembic/*",
+    ".venv/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+show_missing = true
+skip_covered = false

@@ -1,0 +1,47 @@
+name: Lint
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ruff:
+    name: Ruff (lint + format)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      # ── Lint: check for errors, unused imports, style issues ─────────────
+      - name: Ruff lint
+        run: ruff check backend/
+        continue-on-error: false
+
+      # ── Format: check that code is formatted (does not auto-fix) ─────────
+      # PR authors must run `ruff format backend/` locally before pushing.
+      - name: Ruff format check
+        run: ruff format --check backend/
+
+  # ── Optional: type checking with pyright ─────────────────────────────────
+  # Enabled once the codebase reaches full type annotation coverage.
+  # pyright:
+  #   name: Pyright
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-python@v5
+  #       with: { python-version: "3.11" }
+  #     - run: pip install pyright && pyright backend/

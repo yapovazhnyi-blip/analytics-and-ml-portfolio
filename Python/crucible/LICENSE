@@ -1,0 +1,116 @@
+CRUCIBLE COMMERCIAL SOURCE-AVAILABLE LICENSE
+Version 1.0, 2026
+
+Copyright (c) 2026 Yaroslav Ovazhnyi. All rights reserved.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TERMS AND CONDITIONS
+
+1. DEFINITIONS
+
+   "Software" means the Crucible ML Experimentation Platform, including
+   all source code, documentation, configuration files, and associated
+   materials contained in this repository.
+
+   "Licensor" means Yaroslav Ovazhnyi, the copyright holder.
+
+   "You" means the individual or legal entity accessing this repository.
+
+   "Commercial Use" means any use of the Software intended for or
+   directed toward commercial advantage or monetary compensation,
+   including but not limited to: operating a SaaS service, integrating
+   into a commercial product, or providing services to third parties
+   using this Software.
+
+2. PERMITTED USE (NO LICENSE REQUIRED)
+
+   You are permitted, free of charge, to:
+
+   a) View, read, and study the source code for personal or
+      educational purposes.
+
+   b) Run the Software locally on your own machine solely for
+      personal evaluation and non-commercial experimentation.
+
+   c) Fork the repository on GitHub for the sole purpose of
+      submitting pull requests or filing issues.
+
+3. RESTRICTED USE (COMMERCIAL LICENSE REQUIRED)
+
+   The following uses require a separate written commercial license
+   agreement with the Licensor:
+
+   a) Deploying the Software as a hosted service accessible to others.
+
+   b) Integrating the Software or any portion of it into a product
+      or service offered commercially.
+
+   c) Using the Software to provide paid services to third parties.
+
+   d) Distributing the Software or derivative works to third parties.
+
+   e) Using the Software's architecture, design, or source code as the
+      basis for a competing product or service.
+
+4. RESTRICTIONS (ALWAYS APPLY)
+
+   Regardless of any license granted, you may NOT:
+
+   a) Remove, alter, or obscure any copyright notices, license notices,
+      or proprietary markings in the Software.
+
+   b) Use the name "Crucible", the Licensor's name, or related marks
+      to endorse or promote products without prior written permission.
+
+   c) Claim ownership of the Software or represent it as your own work.
+
+5. INTELLECTUAL PROPERTY
+
+   The Licensor retains all intellectual property rights in the Software.
+   No rights are transferred to you except as explicitly stated in this
+   License or a separate commercial license agreement.
+
+6. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+   THE LICENSOR DOES NOT WARRANT THAT THE SOFTWARE WILL BE ERROR-FREE
+   OR UNINTERRUPTED.
+
+7. LIMITATION OF LIABILITY
+
+   IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL,
+   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES, HOWEVER CAUSED AND ON
+   ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT,
+   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE.
+
+8. TERMINATION
+
+   This License terminates automatically if you violate any of its terms.
+   Upon termination, you must immediately cease all use of the Software
+   and destroy all copies in your possession or control.
+
+9. GOVERNING LAW
+
+   This License shall be governed by and construed in accordance with
+   applicable law. Any disputes shall be resolved through negotiation
+   in good faith, or, failing that, through competent legal channels.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COMMERCIAL LICENSING
+
+To obtain a commercial license for deploying or integrating Crucible,
+please contact:
+
+  GitHub:  https://github.com/yapovazhnyi-blip
+
+Commercial licenses are available on a per-deployment or per-organization
+basis. Pricing and terms are agreed upon individually.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+By accessing this repository, you acknowledge that you have read,
+understood, and agree to be bound by the terms of this License.

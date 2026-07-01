@@ -1,0 +1,85 @@
+name: Deploy to ECS
+
+on:
+  workflow_dispatch:      # manual trigger only — production deploys are deliberate
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "staging"
+        type: choice
+        options: ["staging", "production"]
+
+permissions:
+  id-token: write    # required for OIDC AWS authentication (no long-lived AWS keys)
+  contents: read
+
+env:
+  AWS_REGION:    us-east-1
+  ECR_REPOSITORY: crucible-backend
+  ECS_CLUSTER:   crucible-cluster
+  ECS_SERVICE:   crucible-backend-service
+  ECS_TASK_DEF:  infra/ecs/task-definition.json
+  CONTAINER_NAME: crucible-backend
+
+jobs:
+  deploy:
+    name: Build, push, and deploy
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Authenticate to AWS via OIDC (no stored AWS keys in GitHub) ─────────
+      # This requires an IAM role configured to trust GitHub's OIDC provider.
+      # See: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/crucible-github-actions-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ── Build and push image to ECR ───────────────────────────────────────
+      - name: Build and push Docker image
+        id: build
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG backend/
+          docker tag  $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      # ── Update the ECS task definition with the new image ────────────────
+      - name: Fill in new image in task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ env.ECS_TASK_DEF }}
+          container-name:  ${{ env.CONTAINER_NAME }}
+          image:           ${{ steps.build.outputs.image }}
+
+      # ── Deploy — ECS rolling update with circuit breaker rollback ────────
+      # deploymentCircuitBreaker (set in service-definition.json) automatically
+      # rolls back if the new tasks fail health checks, preventing a bad
+      # deploy from taking down the whole service.
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service:         ${{ env.ECS_SERVICE }}
+          cluster:         ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true   # blocks until deploy succeeds or rolls back
+
+      # ── Post-deploy smoke test ────────────────────────────────────────────
+      - name: Health check
+        run: |
+          curl --fail --retry 8 --retry-delay 10 \
+            "${{ secrets.CRUCIBLE_PUBLIC_URL }}/api/v1/health/live"

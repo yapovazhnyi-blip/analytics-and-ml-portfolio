@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+/* ── Design tokens ──────────────────────────────────────────────────────── */
+:root {
+  --bg:           #0D0F10;
+  --bg-2:         #141618;
+  --bg-3:         #1C1F22;
+  --bg-4:         #242729;
+  --border:       #2A2D30;
+  --border-2:     #363A3D;
+  --text-1:       #E8EAEC;
+  --text-2:       #9BA3AA;
+  --text-3:       #5C666F;
+  --accent:       #00C2A8;
+  --accent-dim:   #00C2A820;
+  --accent-hover: #00D9BC;
+  --red:          #F25555;
+  --red-dim:      #F2555520;
+  --amber:        #F2A855;
+  --amber-dim:    #F2A85520;
+  --green:        #4FCF8A;
+  --green-dim:    #4FCF8A20;
+  --blue:         #5B8AF2;
+  --blue-dim:     #5B8AF220;
+  --font-sans:    'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono:    'IBM Plex Mono', 'Fira Code', monospace;
+  --radius-sm:    4px;
+  --radius:       6px;
+  --radius-lg:    10px;
+  --shadow:       0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px var(--border);
+}
+
+/* ── Reset ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; }
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+#root { height: 100%; display: flex; }
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; }
+
+/* ── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-2); }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+
+/* ── Utilities ──────────────────────────────────────────────────────────── */
+.mono { font-family: var(--font-mono); }
+.text-2 { color: var(--text-2); }
+.text-3 { color: var(--text-3); }
+.accent { color: var(--accent); }
